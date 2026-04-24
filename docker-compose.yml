@@ -1,0 +1,142 @@
+services:
+  bge-embedding:
+    image: bge-large-zh-v1.5:latest
+    container_name: bge-embedding
+    ports:
+      - "8718:8718"
+    environment:
+      - HF_ENDPOINT=https://hf-mirror.com
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./data/bge-embedding:/bge-embedding
+    restart: no
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8718/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  etcd:
+    container_name: milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.25
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - ./data/etcd:/etcd
+    command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    restart: no # 除非手动停止，否则始终重启容器
+
+  minio:
+    container_name: milvus-minio
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    ports:
+      - "9001:9001"
+      - "9000:9000"
+    volumes:
+      - ./data/minio:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    restart: no 
+
+  standalone:
+    container_name: milvus-standalone
+    image: milvusdb/milvus:v2.6.8
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MQ_TYPE: woodpecker
+    volumes:
+      - ./data/milvus:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      - "etcd"
+      - "minio"
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    restart: no
+
+  # Milvus可视化工具
+  attu:
+    container_name: milvus-attu
+    image: zilliz/attu:latest
+    ports:
+      - "8000:3000" # 宿主机端口可自定义，这里使用 8000
+    environment:
+      MILVUS_URL: standalone:19530 # 连接同一网络下的 milvus standalone 服务
+    volumes:
+      - ./data/attu:/attu
+    depends_on:
+      - standalone
+    restart: no
+
+  mysql:
+    image: mysql:8.0.32
+    container_name: mysql
+    ports:
+      - "3306:3306" # 映射端口，方便外部工具连接
+    environment:
+      MYSQL_ROOT_PASSWORD: root # 设置 root 密码
+      MYSQL_DATABASE: axzl # 初始化时自动创建的业务数据库名
+      MYSQL_USER: user # 创建普通用户
+      MYSQL_PASSWORD: user # 普通用户密码
+      TZ: Asia/Shanghai # 设置时区为上海
+    volumes:
+      - ./data/mysql:/var/lib/mysql # 数据持久化挂载
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: "2" # 最大使用 2 个 CPU
+          memory: 2G # 最大使用 2GB 内存
+    restart: no 
+
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data # 数据持久化挂载
+    restart: no
+
+  # nginx:
+  #   image: nginx:1.28.0-alpine
+  #   container_name: nginx
+  #   ports:
+  #     - "80:80" # 将宿主机的 80 端口映射到容器的 80 端口
+  #   volumes:
+  #     - ./html:/usr/share/nginx/html # 将本地 html 目录挂载到容器内
+  #   restart: no # 除非手动停止，否则容器退出后自动重启
+networks:
+  default:
+    name: axzl
