@@ -83,6 +83,19 @@ export const constantRoutes = [
         meta: { title: '个人中心', icon: 'user' }
       }
     ]
+  },
+  {
+    path: '/consultation-test',
+    component: Layout,
+    hidden: false,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/biz/consultation/ConsultationTest.vue'),
+        name: 'ConsultationTest',
+        meta: { title: '问诊测试', icon: 'chat-dot-round' }
+      }
+    ]
   }
 ]
 

@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -30,10 +31,21 @@ public class GlobalExceptionHandler
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /**
-     * 权限校验异常
+     * 权限校验异常（Spring Security 6.x 之前）
      */
     @ExceptionHandler(AccessDeniedException.class)
     public AjaxResult handleAccessDeniedException(AccessDeniedException e, HttpServletRequest request)
+    {
+        String requestURI = request.getRequestURI();
+        log.error("请求地址'{}',权限校验失败'{}'", requestURI, e.getMessage());
+        return AjaxResult.error(HttpStatus.FORBIDDEN, "没有权限，请联系管理员授权");
+    }
+
+    /**
+     * 权限校验异常（Spring Security 6.x+）
+     */
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public AjaxResult handleAuthorizationDeniedException(AuthorizationDeniedException e, HttpServletRequest request)
     {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',权限校验失败'{}'", requestURI, e.getMessage());

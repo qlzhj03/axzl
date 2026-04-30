@@ -56,6 +56,11 @@ export default defineConfig(({ mode, command }) => {
          '^/v3/api-docs/(.*)': {
           target: baseUrl,
           changeOrigin: true,
+        },
+        // biz API proxy
+        '/biz': {
+          target: baseUrl,
+          changeOrigin: true,
         }
       }
     },

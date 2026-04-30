@@ -98,17 +98,19 @@ spring:
           max-wait: -1ms
   ai:
     openai:
-      api-key: sk-23656fffb73a424cb7827306a7f36b48
+      api-key: ${AI_DEEPSEEK_API_KEY}
       base-url: https://api.deepseek.com
       chat:
         options:
-          model: deepseek-chat
+          # 可用模型: deepseek-v4-flash, deepseek-v4-pro
+          model: deepseek-v4-flash
       embedding:
-        base-url: https://dashscope.aliyuncs.com/compatible-mode
-        api-key: sk-158f154639d24d0fa506762fb59168c7
+        base-url: http://localhost:8718
+        api-key: sk-xxx
         options:
-          model: text-embedding-v3
+          model: bge-large-zh-v1.5
           dimensions: 1024
+        embeddings-path: /v1/embeddings
     vectorstore:
       milvus:
         client:
@@ -122,11 +124,11 @@ spring:
         indexType: IVF_FLAT
         metricType: COSINE
         initialize-schema: true
-    chat:
-      memory:
-        repository:
-          jdbc:
-            initialize-schema: never
+#    chat:
+#      memory:
+#        repository:
+#          jdbc:
+#            initialize-schema: never
 
 
 # token配置

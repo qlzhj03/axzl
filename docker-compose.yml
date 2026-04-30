@@ -1,14 +1,12 @@
 services:
   bge-embedding:
-    image: bge-large-zh-v1.5:latest
     container_name: bge-embedding
+    image: embedding-service
     ports:
       - "8718:8718"
     environment:
       - HF_ENDPOINT=https://hf-mirror.com
       - TZ=Asia/Shanghai
-    volumes:
-      - ./data/bge-embedding:/bge-embedding
     restart: no
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8718/health"]
@@ -93,8 +91,6 @@ services:
       - "8000:3000" # 宿主机端口可自定义，这里使用 8000
     environment:
       MILVUS_URL: standalone:19530 # 连接同一网络下的 milvus standalone 服务
-    volumes:
-      - ./data/attu:/attu
     depends_on:
       - standalone
     restart: no

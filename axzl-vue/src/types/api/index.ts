@@ -19,3 +19,6 @@ export * from "./monitor/cache";
 export * from "./monitor/logininfor";
 export * from "./monitor/operlog";
 export * from "./monitor/online";
+
+// biz 模块
+export * from "./biz/profile";
