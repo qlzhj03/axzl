@@ -57,11 +57,11 @@ export default defineConfig(({ mode, command }) => {
           target: baseUrl,
           changeOrigin: true,
         },
-        // biz API proxy
-        '/biz': {
-          target: baseUrl,
-          changeOrigin: true,
-        }
+        // biz API proxy (no longer needed — all biz API calls use /dev-api prefix)
+        // '/biz': {
+        //   target: baseUrl,
+        //   changeOrigin: true,
+        // }
       }
     },
     css: {

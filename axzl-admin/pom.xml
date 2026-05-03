@@ -45,19 +45,7 @@
         <!-- 业务模块 -->
         <dependency>
             <groupId>com.axzl</groupId>
-            <artifactId>biz-knowledge</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.axzl</groupId>
-            <artifactId>biz-consultation</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.axzl</groupId>
-            <artifactId>biz-profile</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.axzl</groupId>
-            <artifactId>biz-ai</artifactId>
+            <artifactId>axzl-biz</artifactId>
         </dependency>
 
     </dependencies>

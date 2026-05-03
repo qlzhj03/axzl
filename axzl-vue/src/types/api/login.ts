@@ -1,5 +1,4 @@
-import type { AjaxResult } from './common'
-import type { SysUser } from './system/user'
+import type { SysUser,AjaxResult } from '@/types'
 
 // 登录响应
 export interface LoginInfoResult extends AjaxResult {

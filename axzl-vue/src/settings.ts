@@ -52,6 +52,6 @@ export default {
   /**
    * 底部版权文本内容
    */
-  footerContent: 'Copyright © 2018-2026 Axzl. All Rights Reserved.'
+  footerContent: 'Copyright © 2026 安心诊疗AI智能平台. All Rights Reserved.'
 }
 

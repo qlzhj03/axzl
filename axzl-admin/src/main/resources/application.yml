@@ -163,10 +163,27 @@ springdoc:
     enabled: true
     path: /swagger-ui.html
     tags-sorter: alpha
+    operations-sorter: alpha
   group-configs:
-    - group: 'default'
-      display-name: '测试模块'
-      paths-to-match: '/**'
+    - group: '业务模块'
+      display-name: '业务模块'
+      paths-to-match: '/biz/**'
+      packages-to-scan: com.axzl.web.controller.biz
+    - group: '系统模块'
+      display-name: '系统模块'
+      paths-to-match: '/system/**'
+      packages-to-scan: com.axzl.web.controller.system
+    - group: '监控模块'
+      display-name: '监控模块'
+      paths-to-match: '/monitor/**'
+      packages-to-scan: com.axzl.web.controller.monitor
+    - group: '通用模块'
+      display-name: '通用模块'
+      paths-to-match: '/common/**'
+      packages-to-scan: com.axzl.web.controller.common
+    - group: '工具模块'
+      display-name: '工具模块'
+      paths-to-match: '/tool/**'
       packages-to-scan: com.axzl.web.controller.tool
 
 # 防盗链配置

@@ -1,5 +1,6 @@
 import request from '@/utils/request'
-import type { ProfileQueryParams, ProfileFormData, UserProfile, AjaxResult, TableDataInfo } from '@/types/api/biz/profile'
+import type { ProfileQueryParams, ProfileFormData, UserProfile} from '@/types/api/biz/profile'
+import {AjaxResult, TableDataInfo} from "@/types";
 
 // 查询健康档案列表
 export function listProfile(query: ProfileQueryParams): Promise<TableDataInfo<UserProfile[]>> {
@@ -41,5 +42,36 @@ export function delProfile(profileIds: number | number[]): Promise<AjaxResult> {
   return request({
     url: '/biz/profile/' + profileIds,
     method: 'delete'
+  })
+}
+
+// 导出健康档案
+export function exportProfile(query: ProfileQueryParams): Promise<any> {
+  return request({
+    url: '/biz/profile/export',
+    method: 'post',
+    params: query,
+    responseType: 'blob'
+  })
+}
+
+// 下载健康档案导入模板
+export function importTemplate(): Promise<any> {
+  return request({
+    url: '/biz/profile/importTemplate',
+    method: 'post',
+    responseType: 'blob'
+  })
+}
+
+// 导入健康档案数据
+export function importData(data: FormData): Promise<AjaxResult> {
+  return request({
+    url: '/biz/profile/importData',
+    method: 'post',
+    data: data,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
   })
 }

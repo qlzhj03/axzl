@@ -1,5 +1,5 @@
 import type { SysRole } from './role'
-import type { PageDomain, AjaxResult, BaseEntity } from "../common";
+import type { PageDomain, AjaxResult, BaseEntity } from "@/types";
 
 /** 用户分页查询参数 */
 export interface UserQueryParams extends PageDomain {

@@ -49,3 +49,21 @@ export function chatStream(data: any) {
     body: JSON.stringify(data)
   })
 }
+
+// 修改会话标题
+export function updateConsultationTitle(sessionId: string, title: string) {
+  return request({
+    url: '/biz/consultation/title/' + sessionId,
+    method: 'put',
+    data: title
+  })
+}
+
+// 置顶/取消置顶会话
+export function updatePinStatus(sessionId: string, isPinned: number) {
+  return request({
+    url: '/biz/consultation/pin/' + sessionId,
+    method: 'put',
+    data: isPinned
+  })
+}

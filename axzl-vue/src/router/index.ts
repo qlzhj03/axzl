@@ -16,12 +16,12 @@ import Layout from '@/layout/index.vue'
  * roles: ['admin', 'common']       // 访问路由的角色权限
  * permissions: ['a:a:a', 'b:b:b']  // 访问路由的菜单权限
  * meta : {
-    noCache: true                   // 如果设置为true，则不会被 <keep-alive> 缓存(默认 false)
-    title: 'title'                  // 设置该路由在侧边栏和面包屑中展示的名字
-    icon: 'svg-name'                // 设置该路由的图标，对应路径src/assets/icons/svg
-    breadcrumb: false               // 如果设置为false，则不会在breadcrumb面包屑中显示
-    activeMenu: '/system/user'      // 当路由设置了该属性，则会高亮相对应的侧边栏。
-  }
+ noCache: true                   // 如果设置为true，则不会被 <keep-alive> 缓存(默认 false)
+ title: 'title'                  // 设置该路由在侧边栏和面包屑中展示的名字
+ icon: 'svg-name'                // 设置该路由的图标，对应路径src/assets/icons/svg
+ breadcrumb: false               // 如果设置为false，则不会在breadcrumb面包屑中显示
+ activeMenu: '/system/user'      // 当路由设置了该属性，则会高亮相对应的侧边栏。
+ }
  */
 
 // 公共路由
@@ -48,11 +48,6 @@ export const constantRoutes = [
     hidden: true
   },
   {
-    path: "/:pathMatch(.*)*",
-    component: () => import('@/views/error/404.vue'),
-    hidden: true
-  },
-  {
     path: '/401',
     component: () => import('@/views/error/401.vue'),
     hidden: true
@@ -71,31 +66,23 @@ export const constantRoutes = [
     ]
   },
   {
-    path: '/user',
+    path: '/user/profile',
     component: Layout,
     hidden: true,
-    redirect: 'noredirect',
     children: [
       {
-        path: 'profile/:activeTab?',
+        path: '',
         component: () => import('@/views/system/user/profile/index.vue'),
         name: 'Profile',
         meta: { title: '个人中心', icon: 'user' }
       }
     ]
   },
+  // 404页面必须放在最后
   {
-    path: '/consultation-test',
-    component: Layout,
-    hidden: false,
-    children: [
-      {
-        path: '',
-        component: () => import('@/views/biz/consultation/ConsultationTest.vue'),
-        name: 'ConsultationTest',
-        meta: { title: '问诊测试', icon: 'chat-dot-round' }
-      }
-    ]
+    path: "/:pathMatch(.*)*",
+    component: () => import('@/views/error/404.vue'),
+    hidden: true
   }
 ]
 
@@ -142,7 +129,7 @@ export const dynamicRoutes = [
         meta: { title: '字典数据', activeMenu: '/system/dict' }
       }
     ]
-  }
+  },
 ]
 
 const router = createRouter({

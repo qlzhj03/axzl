@@ -1,6 +1,7 @@
 package com.axzl.system.domain;
 
 import java.util.Date;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.axzl.common.annotation.Excel;
 import com.axzl.common.annotation.Excel.ColumnType;
@@ -45,10 +46,6 @@ public class SysOperLog extends BaseEntity
     /** 操作人员 */
     @Excel(name = "操作人员")
     private String operName;
-
-    /** 部门名称 */
-    @Excel(name = "部门名称")
-    private String deptName;
 
     /** 请求url */
     @Excel(name = "请求地址")
@@ -165,16 +162,6 @@ public class SysOperLog extends BaseEntity
     public void setOperName(String operName)
     {
         this.operName = operName;
-    }
-
-    public String getDeptName()
-    {
-        return deptName;
-    }
-
-    public void setDeptName(String deptName)
-    {
-        this.deptName = deptName;
     }
 
     public String getOperUrl()

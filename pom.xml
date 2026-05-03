@@ -2,16 +2,16 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	
+    <modelVersion>4.0.0</modelVersion>
+
     <groupId>com.axzl</groupId>
     <artifactId>axzl</artifactId>
     <version>3.9.1</version>
 
     <name>axzl</name>
     <description>安心诊聊平台</description>
-    
-        <properties>
+
+    <properties>
         <axzl.version>3.9.1</axzl.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -30,8 +30,8 @@
         <jwt.version>0.9.1</jwt.version>
         <jaxb-api.version>2.3.1</jaxb-api.version>
         <springdoc.version>3.0.2</springdoc.version>
-		
-		<knife4j.version>4.4.0</knife4j.version>
+
+        <knife4j.version>4.4.0</knife4j.version>
         <spring-ai.version>2.0.0-M3</spring-ai.version>
         <mybatis-plus-starter.version>3.5.16</mybatis-plus-starter.version>
     </properties>
@@ -48,38 +48,37 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-			
-			<!-- Spring AI 的依赖配置-->
-			<dependency>
+
+            <!-- Spring AI 的依赖配置-->
+            <dependency>
                 <groupId>org.springframework.ai</groupId>
                 <artifactId>spring-ai-bom</artifactId>
                 <version>${spring-ai.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-			
-			<!-- knife4j -->
-			<dependency>
-				<groupId>com.github.xiaoymin</groupId>
-				<artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
-				<version>${knife4j.version}</version>
-			</dependency>
-			
-			<!-- mybatis-plus-annotation -->
-			<dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-annotation</artifactId>
-            <version>${mybatis-plus-starter.version}</version>
-			</dependency>
 
-			<!-- mybatis-plus-extension-->
-			<dependency>
-				<groupId>com.baomidou</groupId>
-				<artifactId>mybatis-plus-extension</artifactId>
-				<version>${mybatis-plus-starter.version}</version>
-			</dependency>
-			
-	
+            <!-- knife -->
+            <dependency>
+                <groupId>com.github.xiaoymin</groupId>
+                <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+                <version>${knife4j.version}</version>
+            </dependency>
+
+            <!-- mybatis-plus-annotation -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-annotation</artifactId>
+                <version>${mybatis-plus-starter.version}</version>
+            </dependency>
+
+            <!-- mybatis-plus-extension-->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-extension</artifactId>
+                <version>${mybatis-plus-starter.version}</version>
+            </dependency>
+
 
             <!-- 阿里数据库连接池 -->
             <dependency>
@@ -107,26 +106,26 @@
                 <artifactId>mybatis-spring-boot-starter</artifactId>
                 <version>${mybatis-spring-boot.version}</version>
             </dependency>
-			
-			<!-- 升级Mybatis-Plus -->
-			<dependency>
-            <groupId>org.mybatis</groupId>
-            <artifactId>mybatis</artifactId>
-            <version>${mybatis-plus-starter.version}</version>
-			</dependency>
 
-			<dependency>
-				<groupId>com.baomidou</groupId>
-				<artifactId>mybatis-plus-spring-boot4-starter</artifactId>
-				<version>${mybatis-plus-starter.version}</version>
-			</dependency>
+            <!-- 升级Mybatis-Plus -->
+            <dependency>
+                <groupId>org.mybatis</groupId>
+                <artifactId>mybatis</artifactId>
+                <version>${mybatis-plus-starter.version}</version>
+            </dependency>
 
-			<dependency>
-				<groupId>com.baomidou</groupId>
-				<artifactId>mybatis-plus-jsqlparser</artifactId>
-				<version>${mybatis-plus-starter.version}</version>
-			</dependency>
-			<!-- End  -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+                <version>${mybatis-plus-starter.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-jsqlparser</artifactId>
+                <version>${mybatis-plus-starter.version}</version>
+            </dependency>
+            <!-- End  -->
 
             <dependency>
                 <groupId>javax.xml.bind</groupId>
@@ -163,7 +162,6 @@
             </dependency>
 
 
-
             <!-- 阿里JSON解析器 -->
             <dependency>
                 <groupId>com.alibaba.fastjson2</groupId>
@@ -184,7 +182,6 @@
                 <artifactId>kaptcha</artifactId>
                 <version>${kaptcha.version}</version>
             </dependency>
-
 
 
             <!-- 核心模块-->
@@ -232,22 +229,7 @@
             <!-- 新增业务模块 -->
             <dependency>
                 <groupId>com.axzl</groupId>
-                <artifactId>biz-knowledge</artifactId>
-                <version>${axzl.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.axzl</groupId>
-                <artifactId>biz-consultation</artifactId>
-                <version>${axzl.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.axzl</groupId>
-                <artifactId>biz-profile</artifactId>
-                <version>${axzl.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.axzl</groupId>
-                <artifactId>biz-ai</artifactId>
+                <artifactId>axzl-biz</artifactId>
                 <version>${axzl.version}</version>
             </dependency>
 
@@ -259,10 +241,7 @@
         <module>axzl-framework</module>
         <module>axzl-system</module>
         <module>axzl-common</module>
-        <module>biz-knowledge</module>
-        <module>biz-consultation</module>
-        <module>biz-profile</module>
-        <module>biz-ai</module>
+        <module>axzl-biz</module>
     </modules>
     <packaging>pom</packaging>
 
@@ -271,12 +250,13 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
+                <version>3.11.0</version>
                 <configuration>
-                    <parameters>true</parameters>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
                     <encoding>${project.build.sourceEncoding}</encoding>
+                    <!-- 保留方法参数名信息,支持Spring MVC参数解析 -->
+                    <parameters>true</parameters>
                 </configuration>
             </plugin>
             <plugin>
@@ -286,38 +266,4 @@
             </plugin>
         </plugins>
     </build>
-
-    <repositories>
-        <repository>
-            <id>public</id>
-            <name>aliyun nexus</name>
-            <url>https://maven.aliyun.com/repository/public</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-        </repository>
-        <repository>
-            <id>spring-milestones</id>
-            <name>Spring Milestones</name>
-            <url>https://repo.spring.io/milestone</url>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
-
-    <pluginRepositories>
-        <pluginRepository>
-            <id>public</id>
-            <name>aliyun nexus</name>
-            <url>https://maven.aliyun.com/repository/public</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </pluginRepository>
-    </pluginRepositories>
-
 </project>

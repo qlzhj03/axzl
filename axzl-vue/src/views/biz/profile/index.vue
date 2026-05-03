@@ -43,27 +43,54 @@
       <el-col :span="1.5">
         <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete" v-hasPermi="['biz:profile:remove']">删除</el-button>
       </el-col>
-      <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
+      <el-col :span="1.5">
+        <el-button type="info" plain icon="Upload" @click="handleImport" v-hasPermi="['biz:profile:import']">导入</el-button>
+      </el-col>
+      <el-col :span="1.5">
+        <el-button type="warning" plain icon="Download" @click="handleExport" v-hasPermi="['biz:profile:export']">导出</el-button>
+      </el-col>
+      <right-toolbar v-model:showSearch="showSearch" @queryTable="getList" :columns="columns"></right-toolbar>
     </el-row>
 
     <el-table v-loading="loading" :data="profileList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="50" align="center" />
-      <el-table-column label="用户昵称" align="center" prop="nickName" width="120" :show-overflow-tooltip="true" />
-      <el-table-column label="性别" align="center" prop="gender" width="80">
+      <el-table-column label="档案ID" align="center" key="profileId" prop="profileId" v-if="columns.profileId.visible" width="100" />
+      <el-table-column label="用户ID" align="center" key="userId" prop="userId" v-if="columns.userId.visible" width="100" />
+      <el-table-column label="用户昵称" align="center" key="nickName" prop="nickName" v-if="columns.nickName.visible" width="120" :show-overflow-tooltip="true" />
+      <el-table-column label="出生日期" align="center" key="birthday" prop="birthday" v-if="columns.birthday.visible" width="120">
+        <template #default="scope">
+          <span>{{ parseTime(scope.row.birthday, '{y}-{m}-{d}') }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="性别" align="center" key="gender" prop="gender" v-if="columns.gender.visible" width="80">
         <template #default="scope">
           <dict-tag :options="sys_user_sex" :value="scope.row.gender" />
         </template>
       </el-table-column>
-      <el-table-column label="血型" align="center" prop="bloodType" width="80" />
-      <el-table-column label="身高(cm)" align="center" prop="height" width="100" />
-      <el-table-column label="体重(kg)" align="center" prop="weight" width="100" />
-      <el-table-column label="过敏史" align="center" prop="allergyHistory" min-width="200" :show-overflow-tooltip="true" />
-      <el-table-column label="状态" align="center" prop="status" width="80">
+      <el-table-column label="血型" align="center" key="bloodType" prop="bloodType" v-if="columns.bloodType.visible" width="80" />
+      <el-table-column label="身高(cm)" align="center" key="height" prop="height" v-if="columns.height.visible" width="100" />
+      <el-table-column label="体重(kg)" align="center" key="weight" prop="weight" v-if="columns.weight.visible" width="100" />
+      <el-table-column label="过敏史" align="center" key="allergyHistory" prop="allergyHistory" v-if="columns.allergyHistory.visible" min-width="150" :show-overflow-tooltip="true" />
+      <el-table-column label="既往病史" align="center" key="medicalHistory" prop="medicalHistory" v-if="columns.medicalHistory.visible" min-width="150" :show-overflow-tooltip="true" />
+      <el-table-column label="家族病史" align="center" key="familyHistory" prop="familyHistory" v-if="columns.familyHistory.visible" min-width="150" :show-overflow-tooltip="true" />
+      <el-table-column label="生活习惯" align="center" key="lifestyle" prop="lifestyle" v-if="columns.lifestyle.visible" min-width="150" :show-overflow-tooltip="true" />
+      <el-table-column label="状态" align="center" key="status" prop="status" v-if="columns.status.visible" width="80">
         <template #default="scope">
           <dict-tag :options="sys_normal_disable" :value="scope.row.status" />
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="180" class-name="small-padding fixed-width">
+      <el-table-column label="备注" align="center" key="remark" prop="remark" v-if="columns.remark.visible" min-width="150" :show-overflow-tooltip="true" />
+      <el-table-column label="创建时间" align="center" key="createTime" prop="createTime" v-if="columns.createTime.visible" width="160">
+        <template #default="scope">
+          <span>{{ parseTime(scope.row.createTime) }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="更新时间" align="center" key="updateTime" prop="updateTime" v-if="columns.updateTime.visible" width="160">
+        <template #default="scope">
+          <span>{{ parseTime(scope.row.updateTime) }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" align="center" width="180" class-name="small-padding fixed-width" fixed="right">
         <template #default="scope">
           <el-tooltip content="查看" placement="top">
             <el-button link type="primary" icon="View" @click="handleView(scope.row)"></el-button>
@@ -265,14 +292,39 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 健康档案导入对话框 -->
+    <el-dialog :title="upload.title" v-model="upload.open" width="400px" append-to-body>
+      <el-upload ref="uploadRef" :limit="1" accept=".xlsx, .xls" :headers="upload.headers" :action="upload.url + '?updateSupport=' + upload.updateSupport" :disabled="upload.isUploading" :on-progress="handleFileUploadProgress" :on-success="handleFileSuccess" :on-change="handleFileChange" :on-remove="handleFileRemove" :auto-upload="false" drag>
+        <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+        <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+        <template #tip>
+          <div class="el-upload__tip text-center">
+            <div class="el-upload__tip">
+              <el-checkbox v-model="upload.updateSupport" />是否更新已经存在的健康档案数据
+            </div>
+            <span>仅允许导入xls、xlsx格式文件。</span>
+            <el-link type="primary" underline="never" style="font-size: 12px; vertical-align: baseline" @click="importTemplateAction">下载模板</el-link>
+          </div>
+        </template>
+      </el-upload>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitFileForm">确 定</el-button>
+          <el-button @click="upload.open = false">取 消</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
-<script setup lang="ts" name="Profile">
-import { listProfile, getProfile, delProfile, addProfile, updateProfile } from "@/api/biz/profile"
+<script setup lang="ts" name="HealthProfile">
+import { listProfile, getProfile, delProfile, addProfile, updateProfile, exportProfile, importTemplate, importData } from "@/api/biz/profile"
 import { listUser } from "@/api/system/user"
+import { getToken } from "@/utils/auth"
 import type { UserProfile, ProfileQueryParams, ProfileFormData } from '@/types/api/biz/profile'
 import type { SysUser, UserQueryParams } from '@/types'
+import type { TableShowColumns } from '@/types/api/common'
 
 const { proxy } = getCurrentInstance()
 const { sys_user_sex, sys_normal_disable } = proxy.useDict("sys_user_sex", "sys_normal_disable")
@@ -289,6 +341,42 @@ const total = ref<number>(0)
 const title = ref<string>("")
 const dateRange = ref<string[]>([])
 const viewForm = ref<UserProfile>({})
+
+// 列显隐信息
+const columns = ref<Record<string, TableShowColumns>>({
+  profileId: { label: '档案ID', visible: false },
+  userId: { label: '用户ID', visible: false },
+  nickName: { label: '用户昵称', visible: true },
+  birthday: { label: '出生日期', visible: false },
+  gender: { label: '性别', visible: true },
+  bloodType: { label: '血型', visible: true },
+  height: { label: '身高(cm)', visible: true },
+  weight: { label: '体重(kg)', visible: true },
+  allergyHistory: { label: '过敏史', visible: false },
+  medicalHistory: { label: '既往病史', visible: false },
+  familyHistory: { label: '家族病史', visible: false },
+  lifestyle: { label: '生活习惯', visible: false },
+  status: { label: '状态', visible: true },
+  remark: { label: '备注', visible: false },
+  createTime: { label: '创建时间', visible: false },
+  updateTime: { label: '更新时间', visible: false }
+})
+
+/*** 用户导入参数 */
+const upload = reactive({
+  // 是否显示弹出层（用户导入）
+  open: false,
+  // 弹出层标题（用户导入）
+  title: "",
+  // 是否禁用上传
+  isUploading: false,
+  // 是否更新已经存在的用户数据
+  updateSupport: 0,
+  // 设置上传的请求头部
+  headers: { Authorization: "Bearer " + getToken() },
+  // 上传的地址
+  url: import.meta.env.VITE_APP_BASE_API + "/biz/profile/importData"
+})
 
 // 用户选择相关
 const userDialogVisible = ref<boolean>(false)
@@ -499,6 +587,60 @@ function closeUserDialog() {
 function cancel() {
   open.value = false
   reset()
+}
+
+/** 导出按钮操作 */
+function handleExport() {
+  proxy.download("biz/profile/export", {
+    ...queryParams.value,
+  }, `profile_${new Date().getTime()}.xlsx`)
+}
+
+/** 导入按钮操作 */
+function handleImport() {
+  upload.title = "健康档案导入"
+  upload.open = true
+  upload.selectedFile = null
+}
+
+/** 下载模板操作 */
+function importTemplateAction() {
+  proxy.download("biz/profile/importTemplate", {
+  }, `profile_template_${new Date().getTime()}.xlsx`)
+}
+
+/**文件上传中处理 */
+const handleFileUploadProgress = (event: any, file: any, fileList: any[]) => {
+  upload.isUploading = true
+}
+
+/** 文件选择处理 */
+const handleFileChange = (file: any, fileList: any[]) => {
+  upload.selectedFile = file
+}
+
+/** 文件删除处理 */
+const handleFileRemove = (file: any, fileList: any[]) => {
+  upload.selectedFile = null
+}
+
+/** 文件上传成功处理 */
+const handleFileSuccess = (response: any, file: any, fileList: any[]) => {
+  upload.open = false
+  upload.isUploading = false
+  proxy.$refs["uploadRef"].handleRemove(file)
+  proxy.$alert("<div style='overflow: auto;overflow-x: hidden;max-height: 70vh;padding: 10px 20px 0;'>" + response.msg + "</div>", "导入结果", { dangerouslyUseHTMLString: true })
+  getList()
+}
+
+/** 提交上传文件 */
+function submitFileForm() {
+  const file = upload.selectedFile
+  if (!file || file.length === 0 || !file.name.toLowerCase().endsWith('.xls') && !file.name.toLowerCase().endsWith('.xlsx')) {
+    proxy.$modal.msgError("请选择后缀为 'xls'或'xlsx'的文件。")
+    return
+  }
+  proxy.$refs["uploadRef"].submit()
 }
 
 onMounted(() => {

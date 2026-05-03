@@ -41,7 +41,12 @@
         <el-table v-loading="loading" :data="sessionList" @selection-change="handleSelectionChange">
           <el-table-column type="selection" width="50" align="center" />
           <el-table-column label="用户昵称" align="center" prop="nickName" width="120" :show-overflow-tooltip="true" />
-          <el-table-column label="会话标题" align="center" prop="title" min-width="200" :show-overflow-tooltip="true" />
+          <el-table-column label="会话标题" align="center" prop="title" min-width="200" :show-overflow-tooltip="true">
+            <template #default="scope">
+              <el-tag v-if="scope.row.isPinned === 1" type="warning" size="small" style="margin-right: 5px">置顶</el-tag>
+              <span>{{ scope.row.title }}</span>
+            </template>
+          </el-table-column>
           <el-table-column label="症状摘要" align="center" prop="symptomSummary" min-width="200" :show-overflow-tooltip="true" />
           <el-table-column label="推荐科室" align="center" prop="recommendedLabel" width="120" />
           <el-table-column label="消息数" align="center" prop="messageCount" width="80" />
@@ -63,10 +68,16 @@
               <span>{{ parseTime(scope.row.lastMessageTime) }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="操作" align="center" width="180" class-name="small-padding fixed-width">
+          <el-table-column label="操作" align="center" width="250" class-name="small-padding fixed-width">
             <template #default="scope">
               <el-tooltip content="查看" placement="top">
                 <el-button link type="primary" icon="View" @click="handleView(scope.row)"></el-button>
+              </el-tooltip>
+              <el-tooltip content="修改标题" placement="top">
+                <el-button link type="primary" icon="Edit" @click="handleEditTitle(scope.row)" v-hasPermi="['biz:consultation:edit']"></el-button>
+              </el-tooltip>
+              <el-tooltip :content="scope.row.isPinned === 1 ? '取消置顶' : '置顶'" placement="top">
+                <el-button link :type="scope.row.isPinned === 1 ? 'warning' : 'primary'" :icon="scope.row.isPinned === 1 ? 'Star' : 'StarFilled'" @click="handlePin(scope.row)" v-hasPermi="['biz:consultation:pin']"></el-button>
               </el-tooltip>
               <el-tooltip content="删除" placement="top">
                 <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['biz:consultation:remove']"></el-button>
@@ -128,11 +139,26 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 编辑标题对话框 -->
+    <el-dialog title="修改会话标题" v-model="editDialogVisible" width="500px" append-to-body>
+      <el-form :model="editForm" label-width="80px">
+        <el-form-item label="会话标题">
+          <el-input v-model="editForm.title" placeholder="请输入会话标题" maxlength="100" show-word-limit />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="editDialogVisible = false">取 消</el-button>
+          <el-button type="primary" @click="submitEditTitle">确 定</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts" name="Consultation">
-import { listConsultation, getConsultation, delConsultation } from "@/api/biz/consultation"
+import { listConsultation, getConsultation, delConsultation, updateConsultationTitle, updatePinStatus } from "@/api/biz/consultation"
 import ChatInterface from './ChatInterface.vue'
 
 const { proxy } = getCurrentInstance()
@@ -157,6 +183,13 @@ const queryParams = ref({
 })
 
 const viewForm = ref<any>({})
+
+// 编辑标题相关
+const editDialogVisible = ref<boolean>(false)
+const editForm = ref({
+  sessionId: '',
+  title: ''
+})
 
 /** 查询问诊会话列表 */
 function getList() {
@@ -206,6 +239,38 @@ function handleDelete(row?: any) {
   }).then(() => {
     getList()
     proxy.$modal.msgSuccess("删除成功")
+  }).catch(() => {})
+}
+
+/** 编辑标题按钮操作 */
+function handleEditTitle(row: any) {
+  editForm.value.sessionId = row.sessionId
+  editForm.value.title = row.title
+  editDialogVisible.value = true
+}
+
+/** 提交编辑标题 */
+function submitEditTitle() {
+  if (!editForm.value.title.trim()) {
+    proxy.$modal.msgError("标题不能为空")
+    return
+  }
+  updateConsultationTitle(editForm.value.sessionId, editForm.value.title).then(() => {
+    proxy.$modal.msgSuccess("修改成功")
+    editDialogVisible.value = false
+    getList()
+  })
+}
+
+/** 置顶/取消置顶按钮操作 */
+function handlePin(row: any) {
+  const newPinStatus = row.isPinned === 1 ? 0 : 1
+  const actionText = newPinStatus === 1 ? '置顶' : '取消置顶'
+  proxy.$modal.confirm(`确认${actionText}该会话吗？`).then(() => {
+    return updatePinStatus(row.sessionId, newPinStatus)
+  }).then(() => {
+    proxy.$modal.msgSuccess(`${actionText}成功`)
+    getList()
   }).catch(() => {})
 }
 

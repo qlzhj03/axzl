@@ -75,7 +75,7 @@ const props = defineProps({
   // 文件类型, 例如['png', 'jpg', 'jpeg']
   fileType: {
     type: Array as () => string[],
-    default: () => ["doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "pdf"]
+    default: () => ["doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "pdf", "md", "jsonl"]
   },
   // 是否显示提示
   isShowTip: {
