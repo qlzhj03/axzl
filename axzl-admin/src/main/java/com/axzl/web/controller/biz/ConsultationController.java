@@ -11,8 +11,10 @@ import com.axzl.biz.service.IChatSessionService;
 import com.axzl.common.annotation.Log;
 import com.axzl.common.core.controller.BaseController;
 import com.axzl.common.core.domain.AjaxResult;
+import com.axzl.common.core.domain.entity.SysUser;
 import com.axzl.common.core.page.TableDataInfo;
 import com.axzl.common.enums.BusinessType;
+import com.axzl.system.mapper.SysUserMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,8 +30,10 @@ import reactor.core.publisher.Flux;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 /**
  * 智能问诊Controller（统一管理端和用户端）
@@ -50,19 +54,45 @@ public class ConsultationController extends BaseController {
     @Autowired
     private AiConsultationService aiConsultationService;
 
+    @Autowired
+    private SysUserMapper sysUserMapper;
+
     // 创建线程池用于异步处理SSE
     private static final ExecutorService sseExecutor = Executors.newCachedThreadPool();
 
     /**
      * 查询问诊会话列表
      */
-    @Operation(summary = "查询问诊会话列表", description = "分页查询问诊会话列表，支持按用户昵称、标题、状态等条件搜索")
+    @Operation(summary = "查询问诊会话列表", description = "分页查询问诊会话列表，支持按用户ID、标题、状态等条件搜索")
     @PreAuthorize("@ss.hasPermi('biz:consultation:list')")
     @GetMapping("/list")
     public TableDataInfo list(ChatSession session) {
         startPage();
         List<ChatSession> list = sessionService.selectSessionList(session);
+        // 批量填充用户昵称
+        fillNickName(list);
         return getDataTable(list);
+    }
+
+    /**
+     * 批量填充会话列表中的用户昵称
+     */
+    private void fillNickName(List<ChatSession> list) {
+        if (list == null || list.isEmpty()) {
+            return;
+        }
+        List<Long> userIds = list.stream()
+                .map(ChatSession::getUserId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        if (userIds.isEmpty()) {
+            return;
+        }
+        List<SysUser> users = sysUserMapper.selectUserByIds(userIds);
+        Map<Long, String> nickNameMap = users.stream()
+                .collect(Collectors.toMap(SysUser::getUserId, SysUser::getNickName, (a, b) -> a));
+        list.forEach(s -> s.setNickName(nickNameMap.getOrDefault(s.getUserId(), "未知用户")));
     }
 
     /**
@@ -207,6 +237,34 @@ public class ConsultationController extends BaseController {
         ChatSessionDetail detail = new ChatSessionDetail();
         detail.setSession(session);
         detail.setMessages(messageService.selectMessagesBySessionId(sessionId));
+        return success(detail);
+    }
+
+    /**
+     * 管理端会话详情（含分页消息）
+     */
+    @Operation(summary = "管理端会话详情", description = "管理端获取指定会话的详细信息，含分页消息列表")
+    @PreAuthorize("@ss.hasPermi('biz:consultation:query')")
+    @GetMapping("/detail/admin/{sessionId}")
+    public AjaxResult adminDetail(
+            @Parameter(description = "会话ID", required = true) @PathVariable String sessionId,
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
+            @Parameter(description = "每页条数") @RequestParam(defaultValue = "10") Integer pageSize) {
+        ChatSession session = sessionService.selectSessionById(sessionId);
+        if (session == null) {
+            return error("会话不存在");
+        }
+        // 填充用户昵称
+        if (session.getUserId() != null) {
+            SysUser user = sysUserMapper.selectUserById(session.getUserId());
+            if (user != null) {
+                session.setNickName(user.getNickName());
+            }
+        }
+        ChatSessionDetail detail = new ChatSessionDetail();
+        detail.setSession(session);
+        int offset = (pageNum - 1) * pageSize;
+        detail.setMessages(messageService.selectMessagesPaged(sessionId, offset, pageSize));
         return success(detail);
     }
 

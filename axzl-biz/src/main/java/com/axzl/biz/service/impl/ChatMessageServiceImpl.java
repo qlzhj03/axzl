@@ -43,4 +43,13 @@ public class ChatMessageServiceImpl extends ServiceImpl<ChatMessageMapper, ChatM
                .last("limit " + limit);
         return list(wrapper);
     }
+
+    @Override
+    public List<ChatMessage> selectMessagesPaged(String sessionId, int offset, int limit) {
+        LambdaQueryWrapper<ChatMessage> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ChatMessage::getSessionId, sessionId)
+               .orderByDesc(ChatMessage::getCreateTime)
+               .last("limit " + limit + " offset " + offset);
+        return list(wrapper);
+    }
 }

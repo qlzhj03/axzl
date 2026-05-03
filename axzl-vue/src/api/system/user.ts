@@ -102,12 +102,11 @@ export function updateUserPwd(oldPassword: string, newPassword: string): Promise
 }
 
 // 用户头像上传
-export function uploadAvatar(file: FormData | File): Promise<UserProfileAvatarResult> {
+export function uploadAvatar(data: FormData): Promise<UserProfileAvatarResult> {
   return request({
     url: '/system/user/profile/avatar',
     method: 'post',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    data: file
+    data
   })
 }
 

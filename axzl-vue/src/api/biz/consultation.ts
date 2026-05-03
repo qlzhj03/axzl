@@ -34,6 +34,15 @@ export function getSessionMessages(sessionId: string) {
   })
 }
 
+// 管理端获取会话详情（含分页消息）
+export function getAdminSessionDetail(sessionId: string, pageNum?: number, pageSize?: number) {
+  return request({
+    url: '/biz/consultation/detail/admin/' + sessionId,
+    method: 'get',
+    params: { pageNum, pageSize }
+  })
+}
+
 // 智能问诊流式对话（SSE）
 export function chatStream(data: any) {
   // 获取token

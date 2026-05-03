@@ -17,6 +17,11 @@ axzl:
 server:
   # 服务器的HTTP端口，默认为8080
   port: 8080
+  ssl:
+    key-store: classpath:keystore.p12  # 证书路径
+    key-store-password: 12345678  # 密钥库密码
+    key-store-type: PKCS12            # 证书类型
+    key-alias: tomcat                 # 证书别名
   servlet:
     # 应用的访问路径
     context-path: /

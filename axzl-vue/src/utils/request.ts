@@ -22,6 +22,10 @@ const service = axios.create({
 
 // request拦截器
 service.interceptors.request.use((config: any) => {
+  // FormData请求让浏览器自动设置Content-Type(含boundary)
+  if (config.data instanceof FormData) {
+    config.headers['Content-Type'] = undefined
+  }
   // 是否需要设置 token
   const isToken = (config.headers || {}).isToken === false
   // 是否需要防止数据重复提交
@@ -39,6 +43,10 @@ service.interceptors.request.use((config: any) => {
     config.url = url
   }
   if (!isRepeatSubmit && (config.method === 'post' || config.method === 'put')) {
+    // FormData不能序列化，跳过防重复提交检查
+    if (config.data instanceof FormData) {
+      return config
+    }
     const requestObj = {
       url: config.url,
       data: typeof config.data === 'object' ? JSON.stringify(config.data) : config.data,

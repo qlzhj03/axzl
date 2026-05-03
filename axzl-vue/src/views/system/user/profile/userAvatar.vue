@@ -4,8 +4,9 @@
     <el-dialog :title="title" v-model="open" width="800px" append-to-body @opened="modalOpened" @close="closeDialog">
       <el-row>
         <el-col :xs="24" :md="12" :style="{ height: '350px' }">
-          <vue-cropper
-            ref="cropper"
+          <VueCropper
+            v-if="visible"
+            ref="cropperRef"
             :img="options.img"
             :info="true"
             :autoCrop="options.autoCrop"
@@ -14,7 +15,6 @@
             :fixedBox="options.fixedBox"
             :outputType="options.outputType"
             @realTime="realTime"
-            v-if="visible"
           />
         </el-col>
         <el-col :xs="24" :md="12" :style="{ height: '350px' }">
@@ -28,9 +28,9 @@
         <el-col :lg="2" :md="2">
           <el-upload
             action="#"
-            :http-request="requestUpload"
+            :auto-upload="false"
             :show-file-list="false"
-            :before-upload="beforeUpload"
+            :on-change="handleChange"
           >
             <el-button>
               选择
@@ -39,16 +39,16 @@
           </el-upload>
         </el-col>
         <el-col :lg="{ span: 1, offset: 2 }" :md="2">
-          <el-button icon="Plus" @click="changeScale(1)"></el-button>
+          <el-button :icon="Plus" @click="changeScale(1)" />
         </el-col>
         <el-col :lg="{ span: 1, offset: 1 }" :md="2">
-          <el-button icon="Minus" @click="changeScale(-1)"></el-button>
+          <el-button :icon="Minus" @click="changeScale(-1)" />
         </el-col>
         <el-col :lg="{ span: 1, offset: 1 }" :md="2">
-          <el-button icon="RefreshLeft" @click="rotateLeft()"></el-button>
+          <el-button :icon="RefreshLeft" @click="rotateLeft()" />
         </el-col>
         <el-col :lg="{ span: 1, offset: 1 }" :md="2">
-          <el-button icon="RefreshRight" @click="rotateRight()"></el-button>
+          <el-button :icon="RefreshRight" @click="rotateRight()" />
         </el-col>
         <el-col :lg="{ span: 2, offset: 6 }" :md="2">
           <el-button type="primary" @click="uploadImg()">提 交</el-button>
@@ -59,101 +59,101 @@
 </template>
 
 <script setup lang="ts">
-
-import useUserStore from "@/store/modules/user";
-import {uploadAvatar} from "@/api/system/user";
-import {Upload} from "@element-plus/icons-vue";
+import { ref, reactive } from 'vue'
+import { VueCropper } from 'vue-cropper'
+import { Upload, Plus, Minus, RefreshLeft, RefreshRight } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import type { UploadFile } from 'element-plus'
+import useUserStore from '@/store/modules/user'
+import { uploadAvatar } from '@/api/system/user'
+import 'vue-cropper/dist/index.css'
 
 const userStore = useUserStore()
-const { proxy } = getCurrentInstance()
 
-const open = ref<boolean>(false)
-const visible = ref<boolean>(false)
-const title = ref<string>("修改头像")
+const cropperRef = ref<InstanceType<typeof VueCropper>>()
+const open = ref(false)
+const visible = ref(false)
+const title = ref('修改头像')
+const uploading = ref(false)
 
-//图片裁剪数据
-const options = reactive<any>({
-  img: userStore.avatar,     // 裁剪图片的地址
-  autoCrop: true,            // 是否默认生成截图框
-  autoCropWidth: 200,        // 默认生成截图框宽度
-  autoCropHeight: 200,       // 默认生成截图框高度
-  fixedBox: true,            // 固定截图框大小 不允许改变
-  outputType: "png",         // 默认生成截图为PNG格式
-  filename: 'avatar',        // 文件名称
-  previews: {}               //预览数据
+const options = reactive({
+  img: userStore.avatar as string,
+  autoCrop: true,
+  autoCropWidth: 200,
+  autoCropHeight: 200,
+  fixedBox: true,
+  outputType: 'png' as const,
+  filename: 'avatar',
+  previews: {} as { url?: string; img?: string }
 })
 
-/** 编辑头像 */
 function editCropper() {
   open.value = true
 }
 
-/** 打开弹出层结束时的回调 */
 function modalOpened() {
   visible.value = true
 }
 
-/** 覆盖默认上传行为 */
-function requestUpload() {}
-
-/** 向左旋转 */
 function rotateLeft() {
-  proxy.$refs.cropper.rotateLeft()
+  cropperRef.value?.rotateLeft()
 }
 
-/** 向右旋转 */
 function rotateRight() {
-  proxy.$refs.cropper.rotateRight()
+  cropperRef.value?.rotateRight()
 }
 
-/** 图片缩放 */
 function changeScale(num: number) {
-  num = num || 1
-  proxy.$refs.cropper.changeScale(num)
+  cropperRef.value?.changeScale(num)
 }
 
-/** 上传预处理 */
-function beforeUpload(file: File) {
-  if (file.type.indexOf("image/") == -1) {
-    proxy.$modal.msgError("文件格式错误，请上传图片类型,如：JPG，PNG后缀的文件。")
-  } else {
-    const reader = new FileReader()
-    reader.readAsDataURL(file)
-    reader.onload = () => {
-      options.img = reader.result
-      options.filename = file.name
-    }
+function handleChange(uploadFile: UploadFile) {
+  if (!uploadFile.raw) return
+  if (!uploadFile.raw.type.startsWith('image/')) {
+    ElMessage.error('文件格式错误，请上传图片类型，如：JPG、PNG')
+    return
+  }
+  const reader = new FileReader()
+  reader.readAsDataURL(uploadFile.raw)
+  reader.onload = () => {
+    options.img = reader.result as string
+    options.filename = uploadFile.name
   }
 }
 
-/** 上传图片 */
 function uploadImg() {
-  proxy.$refs.cropper.getCropBlob((data: Blob) => {
+  cropperRef.value?.getCropBlob((data: Blob) => {
+    if (!data) return
+
+    uploading.value = true
     const formData = new FormData()
-    formData.append("avatarfile", data, options.filename)
+    formData.append('avatarfile', data, options.filename)
+
     uploadAvatar(formData).then(response => {
       open.value = false
       options.img = import.meta.env.VITE_APP_BASE_API + response.imgUrl
       userStore.avatar = options.img
-      proxy.$modal.msgSuccess("修改成功")
+      ElMessage.success('修改成功')
       visible.value = false
+    }).catch(() => {
+      ElMessage.error('头像上传失败')
+    }).finally(() => {
+      uploading.value = false
     })
   })
 }
 
-/** 实时预览 */
-function realTime(data: any) {
+function realTime(data: { url?: string; img?: string }) {
   options.previews = data
 }
 
-/** 关闭窗口 */
 function closeDialog() {
-  options.img = userStore.avatar
-  options.visible = false
+  options.img = userStore.avatar as string
+  visible.value = false
 }
 </script>
 
-<style lang='scss' scoped>
+<style lang="scss" scoped>
 .user-info-head {
   position: relative;
   display: inline-block;

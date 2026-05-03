@@ -3,8 +3,8 @@
     <el-tabs v-model="activeTab" class="demo-tabs">
       <el-tab-pane label="会话列表" name="list">
         <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
-          <el-form-item label="用户昵称" prop="nickName">
-            <el-input v-model="queryParams.nickName" placeholder="请输入用户昵称" clearable style="width: 240px" @keyup.enter="handleQuery" />
+          <el-form-item label="用户ID" prop="userId">
+            <el-input v-model="queryParams.userId" placeholder="请输入用户ID" clearable style="width: 200px" @keyup.enter="handleQuery" />
           </el-form-item>
           <el-form-item label="会话标题" prop="title">
             <el-input v-model="queryParams.title" placeholder="请输入会话标题" clearable style="width: 240px" @keyup.enter="handleQuery" />
@@ -40,6 +40,7 @@
 
         <el-table v-loading="loading" :data="sessionList" @selection-change="handleSelectionChange">
           <el-table-column type="selection" width="50" align="center" />
+          <el-table-column label="用户ID" align="center" prop="userId" width="100" />
           <el-table-column label="用户昵称" align="center" prop="nickName" width="120" :show-overflow-tooltip="true" />
           <el-table-column label="会话标题" align="center" prop="title" min-width="200" :show-overflow-tooltip="true">
             <template #default="scope">
@@ -97,6 +98,7 @@
     <!-- 查看会话详情对话框 -->
     <el-dialog title="会话详情" v-model="viewOpen" width="900px" append-to-body>
       <el-descriptions :column="2" border>
+        <el-descriptions-item label="用户ID">{{ viewForm.userId }}</el-descriptions-item>
         <el-descriptions-item label="用户昵称">{{ viewForm.nickName }}</el-descriptions-item>
         <el-descriptions-item label="会话标题">{{ viewForm.title }}</el-descriptions-item>
         <el-descriptions-item label="推荐科室">{{ viewForm.recommendedLabel || '-' }}</el-descriptions-item>
@@ -121,9 +123,13 @@
         <el-descriptions-item label="备注" :span="2">{{ viewForm.remark || '-' }}</el-descriptions-item>
       </el-descriptions>
 
-      <el-divider content-position="left">对话记录</el-divider>
-      <div class="message-list" v-if="messageList.length > 0">
-        <div v-for="(msg, index) in messageList" :key="index" :class="['message-item', msg.role]">
+      <el-divider content-position="left">对话记录（共 {{ messageTotal }} 条）</el-divider>
+      <div class="message-list" ref="messageListRef" v-if="messageList.length > 0">
+        <div v-if="messageLoading" class="message-loading">
+          <el-icon class="is-loading"><Loading /></el-icon> 加载中...
+        </div>
+        <div v-if="messageList.length < messageTotal" class="message-load-hint">向上滚动加载更多历史消息</div>
+        <div v-for="(msg, index) in displayMessages" :key="msg.messageId || index" :class="['message-item', msg.role]">
           <div class="message-header">
             <span class="message-role">{{ msg.role === 'user' ? '用户' : 'AI助手' }}</span>
             <span class="message-time">{{ parseTime(msg.createTime) }}</span>
@@ -158,7 +164,7 @@
 </template>
 
 <script setup lang="ts" name="Consultation">
-import { listConsultation, getConsultation, delConsultation, updateConsultationTitle, updatePinStatus } from "@/api/biz/consultation"
+import { listConsultation, getConsultation, delConsultation, updateConsultationTitle, updatePinStatus, getAdminSessionDetail } from "@/api/biz/consultation"
 import ChatInterface from './ChatInterface.vue'
 
 const { proxy } = getCurrentInstance()
@@ -177,12 +183,25 @@ const dateRange = ref<string[]>([])
 const queryParams = ref({
   pageNum: 1,
   pageSize: 10,
-  nickName: undefined,
+  userId: undefined,
   title: undefined,
   status: undefined
 })
 
 const viewForm = ref<any>({})
+
+// 消息分页相关
+const messagePageNum = ref(1)
+const messagePageSize = 10
+const messageTotal = ref(0)
+const messageLoading = ref(false)
+const currentSessionId = ref('')
+const messageListRef = ref(null)
+
+// 显示用的消息列表（倒序排列，最新消息在底部）
+const displayMessages = computed(() => {
+  return [...messageList.value].reverse()
+})
 
 // 编辑标题相关
 const editDialogVisible = ref<boolean>(false)
@@ -223,11 +242,55 @@ function handleSelectionChange(selection: any[]) {
 /** 查看按钮操作 */
 function handleView(row: any) {
   const sessionId = row.sessionId
-  getConsultation(sessionId).then(response => {
-    viewForm.value = response.data
-    // TODO: 获取消息列表，需要后端提供接口
-    messageList.value = []
+  currentSessionId.value = sessionId
+  messagePageNum.value = 1
+  messageList.value = []
+  getAdminSessionDetail(sessionId, 1, messagePageSize).then(response => {
+    viewForm.value = response.data.session
+    messageList.value = response.data.messages || []
+    messageTotal.value = response.data.session.messageCount || 0
     viewOpen.value = true
+    // 打开对话框后绑定滚动事件
+    nextTick(() => {
+      bindScrollEvent()
+    })
+  })
+}
+
+/** 加载更多消息 */
+function loadMoreMessages() {
+  if (messageLoading.value) return
+  if (messageList.value.length >= messageTotal.value) return
+  messageLoading.value = true
+  messagePageNum.value++
+  // 记录当前滚动位置
+  const container = document.querySelector('.message-list')
+  const oldScrollHeight = container ? container.scrollHeight : 0
+  getAdminSessionDetail(currentSessionId.value, messagePageNum.value, messagePageSize).then(response => {
+    const newMessages = response.data.messages || []
+    messageList.value = [...newMessages, ...messageList.value]
+    messageLoading.value = false
+    // 保持滚动位置不变
+    nextTick(() => {
+      if (container) {
+        const newScrollHeight = container.scrollHeight
+        container.scrollTop = newScrollHeight - oldScrollHeight
+      }
+    })
+  }).catch(() => {
+    messageLoading.value = false
+  })
+}
+
+/** 绑定滚动事件实现无限加载 */
+function bindScrollEvent() {
+  const container = document.querySelector('.message-list')
+  if (!container) return
+  container.addEventListener('scroll', function () {
+    // 距离顶部 50px 时加载更多（倒序排列，向上滚动加载历史）
+    if (container.scrollTop <= 50 && !messageLoading.value && messageList.value.length < messageTotal.value) {
+      loadMoreMessages()
+    }
   })
 }
 
@@ -284,6 +347,20 @@ onMounted(() => {
   max-height: 500px;
   overflow-y: auto;
   padding: 10px;
+
+  .message-loading {
+    text-align: center;
+    padding: 10px;
+    color: #909399;
+    font-size: 13px;
+  }
+
+  .message-load-hint {
+    text-align: center;
+    padding: 8px;
+    color: #c0c4cc;
+    font-size: 12px;
+  }
 
   .message-item {
     margin-bottom: 15px;

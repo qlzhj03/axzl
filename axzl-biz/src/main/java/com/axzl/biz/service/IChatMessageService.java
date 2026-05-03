@@ -36,4 +36,14 @@ public interface IChatMessageService extends IService<ChatMessage> {
      * @return 消息集合
      */
     List<ChatMessage> selectRecentMessages(String sessionId, int limit);
+
+    /**
+     * 分页查询会话消息（按时间倒序）
+     *
+     * @param sessionId 会话ID
+     * @param offset 偏移量
+     * @param limit 条数
+     * @return 消息集合（时间倒序）
+     */
+    List<ChatMessage> selectMessagesPaged(String sessionId, int offset, int limit);
 }
