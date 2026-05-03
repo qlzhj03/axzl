@@ -1,0 +1,27 @@
+// 患者端主题变量 - 亮色模式
+:root {
+  --patient-bg: #f8fafc;
+  --patient-card-bg: #ffffff;
+  --patient-text: #1e293b;
+  --patient-text-secondary: #64748b;
+  --patient-border: #e2e8f0;
+  --patient-chat-bg: #fdfdfd;
+  --patient-bubble-ai-bg: #f1f5f9;
+}
+
+// 首页组件在患者端布局中的适配
+.patient-main-container .home {
+  min-height: calc(100vh - 60px - 48px) !important;
+  padding: 24px 16px !important;
+}
+
+// 患者端主题变量 - 暗色模式
+html.dark {
+  --patient-bg: #0f172a;
+  --patient-card-bg: #1e293b;
+  --patient-text: #f1f5f9;
+  --patient-text-secondary: #94a3b8;
+  --patient-border: #334155;
+  --patient-chat-bg: #162032;
+  --patient-bubble-ai-bg: #273548;
+}
