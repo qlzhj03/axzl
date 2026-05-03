@@ -43,7 +43,7 @@ export default defineConfig(({ mode, command }) => {
     // vite 相关配置
     server: {
       port: 80,
-      host: true,
+      host: 'localhost',
       open: true,
       proxy: {
         // https://cn.vitejs.dev/config/#server-proxy
@@ -56,12 +56,7 @@ export default defineConfig(({ mode, command }) => {
          '^/v3/api-docs/(.*)': {
           target: baseUrl,
           changeOrigin: true,
-        },
-        // biz API proxy (no longer needed — all biz API calls use /dev-api prefix)
-        // '/biz': {
-        //   target: baseUrl,
-        //   changeOrigin: true,
-        // }
+        }
       }
     },
     css: {

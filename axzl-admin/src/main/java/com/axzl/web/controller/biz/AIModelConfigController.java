@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.axzl.common.annotation.Log;
 import com.axzl.common.core.controller.BaseController;
 import com.axzl.common.core.domain.AjaxResult;
+import com.axzl.common.core.page.TableDataInfo;
 import com.axzl.common.enums.BusinessType;
 import com.axzl.common.utils.poi.ExcelUtil;
 import com.axzl.biz.domain.AIModelConfig;
@@ -23,11 +24,11 @@ import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * AI大模型配置Controller
- * 
+ *
  * @author liuchao
  */
 @RestController
-@RequestMapping("/biz/aiModel")
+@RequestMapping("/system/aiModel")
 public class AIModelConfigController extends BaseController
 {
     @Autowired
@@ -36,18 +37,19 @@ public class AIModelConfigController extends BaseController
     /**
      * 查询AI大模型配置列表
      */
-    @PreAuthorize("@ss.hasPermi('biz:aiModel:list')")
+    @PreAuthorize("@ss.hasPermi('system:aiModel:list')")
     @GetMapping("/list")
-    public AjaxResult list(AIModelConfig aiModelConfig)
+    public TableDataInfo list(AIModelConfig aiModelConfig)
     {
+        startPage();
         List<AIModelConfig> list = aiModelConfigService.selectAIModelConfigList(aiModelConfig);
-        return success(list);
+        return getDataTable(list);
     }
 
     /**
      * 获取AI大模型配置详细信息
      */
-    @PreAuthorize("@ss.hasPermi('biz:aiModel:query')")
+    @PreAuthorize("@ss.hasPermi('system:aiModel:query')")
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id)
     {
@@ -57,7 +59,7 @@ public class AIModelConfigController extends BaseController
     /**
      * 根据模型名称获取配置
      */
-    @PreAuthorize("@ss.hasPermi('biz:aiModel:query')")
+    @PreAuthorize("@ss.hasPermi('system:aiModel:query')")
     @GetMapping(value = "/name/{modelName}")
     public AjaxResult getInfoByName(@PathVariable("modelName") String modelName)
     {
@@ -76,29 +78,38 @@ public class AIModelConfigController extends BaseController
     /**
      * 新增AI大模型配置
      */
-    @PreAuthorize("@ss.hasPermi('biz:aiModel:add')")
+    @PreAuthorize("@ss.hasPermi('system:aiModel:add')")
     @Log(title = "AI大模型配置", businessType = BusinessType.INSERT)
     @PostMapping
     public AjaxResult add(@Validated @RequestBody AIModelConfig aiModelConfig)
     {
-        return toAjax(aiModelConfigService.insertAIModelConfig(aiModelConfig, getUsername()) ? 1 : 0);
+        if (!aiModelConfigService.checkModelNameUnique(aiModelConfig))
+        {
+            return error("新增模型'" + aiModelConfig.getModelName() + "'失败，模型名称已存在");
+        }
+        aiModelConfig.setCreateBy(getUsername());
+        return toAjax(aiModelConfigService.save(aiModelConfig) ? 1 : 0);
     }
 
     /**
      * 修改AI大模型配置
      */
-    @PreAuthorize("@ss.hasPermi('biz:aiModel:edit')")
+    @PreAuthorize("@ss.hasPermi('system:aiModel:edit')")
     @Log(title = "AI大模型配置", businessType = BusinessType.UPDATE)
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody AIModelConfig aiModelConfig)
     {
+        if (!aiModelConfigService.checkModelNameUnique(aiModelConfig))
+        {
+            return error("修改模型'" + aiModelConfig.getModelName() + "'失败，模型名称已存在");
+        }
         return toAjax(aiModelConfigService.updateAIModelConfig(aiModelConfig, getUsername()) ? 1 : 0);
     }
 
     /**
      * 切换默认模型
      */
-    @PreAuthorize("@ss.hasPermi('biz:aiModel:switch')")
+    @PreAuthorize("@ss.hasPermi('system:aiModel:switch')")
     @Log(title = "AI大模型配置", businessType = BusinessType.UPDATE)
     @PutMapping("/switchDefault/{id}")
     public AjaxResult switchDefault(@PathVariable("id") Long id)
@@ -109,7 +120,7 @@ public class AIModelConfigController extends BaseController
     /**
      * 删除AI大模型配置
      */
-    @PreAuthorize("@ss.hasPermi('biz:aiModel:remove')")
+    @PreAuthorize("@ss.hasPermi('system:aiModel:remove')")
     @Log(title = "AI大模型配置", businessType = BusinessType.DELETE)
     @DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids)
@@ -120,7 +131,7 @@ public class AIModelConfigController extends BaseController
     /**
      * 导出AI大模型配置列表
      */
-    @PreAuthorize("@ss.hasPermi('biz:aiModel:export')")
+    @PreAuthorize("@ss.hasPermi('system:aiModel:export')")
     @Log(title = "AI大模型配置", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
     public void export(HttpServletResponse response, AIModelConfig aiModelConfig)

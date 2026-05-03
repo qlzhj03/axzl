@@ -13,6 +13,7 @@ export * from "./system/role";
 export * from "./system/menu";
 export * from "./system/dict";
 export * from "./system/config";
+export * from "./system/aiModel";
 
 // monitor 模块
 export * from "./monitor/cache";
