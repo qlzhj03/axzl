@@ -16,6 +16,9 @@ public class ChatRequest {
     @NotNull(message = "消息内容不能为空")
     private String content;
 
+    /** 是否启用知识库增强（默认true） */
+    private boolean useKnowledgeBase = true;
+
     public String getSessionId() {
         return sessionId;
     }
@@ -30,5 +33,13 @@ public class ChatRequest {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public boolean isUseKnowledgeBase() {
+        return useKnowledgeBase;
+    }
+
+    public void setUseKnowledgeBase(boolean useKnowledgeBase) {
+        this.useKnowledgeBase = useKnowledgeBase;
     }
 }

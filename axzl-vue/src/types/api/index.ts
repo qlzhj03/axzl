@@ -23,3 +23,4 @@ export * from "./monitor/online";
 
 // biz 模块
 export * from "./biz/profile";
+export * from "./biz/learning";

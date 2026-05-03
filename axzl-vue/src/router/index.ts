@@ -1,6 +1,7 @@
 import { createWebHistory, createRouter } from 'vue-router'
 /* Layout */
 import Layout from '@/layout/index.vue'
+import PatientLayout from '@/layout/patient/index.vue'
 
 /**
  * Note: 路由配置项
@@ -75,6 +76,63 @@ export const constantRoutes = [
         component: () => import('@/views/system/user/profile/index.vue'),
         name: 'Profile',
         meta: { title: '个人中心', icon: 'user' }
+      }
+    ]
+  },
+  // 患者端路由
+  {
+    path: '/patient',
+    component: PatientLayout,
+    redirect: '/patient/home',
+    hidden: true,
+    children: [
+      {
+        path: 'home',
+        component: () => import('@/views/index.vue'),
+        name: 'PatientHome',
+        meta: { title: '首页' }
+      },
+      {
+        path: 'consultation',
+        component: () => import('@/views/patient/consultation/index.vue'),
+        name: 'PatientConsultation',
+        meta: { title: '智能问诊' }
+      },
+      {
+        path: 'health',
+        component: () => import('@/views/patient/health/index.vue'),
+        name: 'PatientHealth',
+        meta: { title: '健康档案' }
+      },
+      {
+        path: 'documents',
+        component: () => import('@/views/patient/documents/index.vue'),
+        name: 'PatientDocuments',
+        meta: { title: '我的文档' }
+      },
+      {
+        path: 'profile',
+        component: () => import('@/views/patient/profile/index.vue'),
+        name: 'PatientProfile',
+        meta: { title: '个人信息' }
+      },
+      {
+        path: 'learning',
+        component: () => import('@/views/patient/learning/index.vue'),
+        name: 'PatientLearning',
+        meta: { title: '健康知识' }
+      },
+      {
+        path: 'learning/detail/:id',
+        component: () => import('@/views/patient/learning/detail.vue'),
+        name: 'PatientLearningDetail',
+        meta: { title: '文章详情' }
+      },
+      {
+        path: 'learning/bookmarks',
+        component: () => import('@/views/patient/learning/bookmarks.vue'),
+        name: 'PatientLearningBookmarks',
+        meta: { title: '我的收藏' }
       }
     ]
   },

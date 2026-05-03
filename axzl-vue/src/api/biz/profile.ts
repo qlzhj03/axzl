@@ -75,3 +75,22 @@ export function importData(data: FormData): Promise<AjaxResult> {
     }
   })
 }
+
+// --- 患者端专属接口 ---
+
+// 获取我的健康档案（不存在则自动创建）
+export function getMyProfile(): Promise<AjaxResult> {
+  return request({
+    url: '/biz/profile/my',
+    method: 'get'
+  })
+}
+
+// 创建或更新我的健康档案
+export function updateMyProfile(data: any): Promise<AjaxResult> {
+  return request({
+    url: '/biz/profile/my',
+    method: 'post',
+    data: data
+  })
+}

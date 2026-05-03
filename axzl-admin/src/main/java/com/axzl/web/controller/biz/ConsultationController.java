@@ -121,7 +121,7 @@ public class ConsultationController extends BaseController {
         Long userId = getUserId();
         String sessionId = request.getSessionId();
 
-        String response = aiConsultationService.chat(userId, sessionId, request.getContent());
+        String response = aiConsultationService.chat(userId, sessionId, request.getContent(), request.isUseKnowledgeBase());
 
         return success(response);
     }
@@ -160,7 +160,7 @@ public class ConsultationController extends BaseController {
             try {
 
                 // 调用AI服务获取流式响应
-                Flux<String> responseFlux = aiConsultationService.chatStream(userId, sessionId, request.getContent());
+                Flux<String> responseFlux = aiConsultationService.chatStream(userId, sessionId, request.getContent(), request.isUseKnowledgeBase());
 
                 // 订阅流式响应并发送到前端
                 responseFlux.subscribe(chunk -> {

@@ -57,9 +57,9 @@ public class AiConsultationService {
      * @param userMessage 用户消息内容
      * @return AI回复
      */
-    public String chat(Long userId,String sessionId, String userMessage) {
+    public String chat(Long userId,String sessionId, String userMessage, boolean useKnowledgeBase) {
 
-        log.info("AI问诊 - 用户: {}, 会话: {}, 消息: {}", userId, sessionId, userMessage);
+        log.info("AI问诊 - 用户: {}, 会话: {}, 消息: {}, 知识库增强: {}", userId, sessionId, userMessage, useKnowledgeBase);
         // 1. 获取或创建会话
         ChatSession session;
         if (StringUtils.isEmpty(sessionId)) {
@@ -91,8 +91,8 @@ public class AiConsultationService {
         userMsg.setCreateTime(new Date());
         messageService.insertMessage(userMsg);
 
-        // 3. 向量检索 - 从知识库中检索相关内容
-        List<Document> retrievalResults = performVectorSearch(userMessage);
+        // 3. 向量检索 - 从知识库中检索相关内容（根据开关决定是否启用）
+        List<Document> retrievalResults = useKnowledgeBase ? performVectorSearch(userMessage) : Collections.emptyList();
         List<Map<String, Object>> retrievalDetails = new ArrayList<>();
         for (Document doc : retrievalResults) {
             Map<String, Object> detail = new HashMap<>();
@@ -110,7 +110,7 @@ public class AiConsultationService {
         List<ChatMessage> recentMessages = messageService.selectRecentMessages(sessionId, 30);
 
         // 6. 构建Prompt
-        String prompt = buildPrompt(userMessage, retrievalResults, recentMessages, profileContext);
+        String prompt = buildPrompt(userMessage, retrievalResults, recentMessages, profileContext, useKnowledgeBase);
 
         // 7. 调用AI生成回复（使用默认对话模型）
         String aiResponse;
@@ -157,8 +157,8 @@ public class AiConsultationService {
      * @param userMessage 用户消息内容
      * @return AI回复的Flux流
      */
-    public Flux<String> chatStream(Long userId,String sessionId, String userMessage) {
-        log.info("AI问诊(流式) - 用户: {}, 会话: {}, 消息: {}", userId, sessionId, userMessage);
+    public Flux<String> chatStream(Long userId,String sessionId, String userMessage, boolean useKnowledgeBase) {
+        log.info("AI问诊(流式) - 用户: {}, 会话: {}, 消息: {}, 知识库增强: {}", userId, sessionId, userMessage, useKnowledgeBase);
         // 1. 获取或创建会话
         ChatSession session;
         if (StringUtils.isEmpty(sessionId)) {
@@ -190,8 +190,8 @@ public class AiConsultationService {
         userMsg.setCreateTime(new Date());
         messageService.insertMessage(userMsg);
 
-        // 3. 向量检索 - 从知识库中检索相关内容
-        List<Document> retrievalResults = performVectorSearch(userMessage);
+        // 3. 向量检索 - 从知识库中检索相关内容（根据开关决定是否启用）
+        List<Document> retrievalResults = useKnowledgeBase ? performVectorSearch(userMessage) : Collections.emptyList();
         List<Map<String, Object>> retrievalDetails = new ArrayList<>();
         for (Document doc : retrievalResults) {
             Map<String, Object> detail = new HashMap<>();
@@ -209,7 +209,7 @@ public class AiConsultationService {
         List<ChatMessage> recentMessages = messageService.selectRecentMessages(sessionId, 30);
 
         // 6. 构建Prompt
-        String prompt = buildPrompt(userMessage, retrievalResults, recentMessages, profileContext);
+        String prompt = buildPrompt(userMessage, retrievalResults, recentMessages, profileContext, useKnowledgeBase);
 
         // 7. 调用AI生成流式回复（使用默认对话模型）
         Flux<String> aiResponse;
@@ -352,20 +352,23 @@ public class AiConsultationService {
      * 构建RAG Prompt
      */
     private String buildPrompt(String userMessage, List<Document> retrievalResults,
-                               List<ChatMessage> history, String profileContext) {
+                               List<ChatMessage> history, String profileContext, boolean useKnowledgeBase) {
         StringBuilder prompt = new StringBuilder();
 
-        prompt.append("【参考知识】\n");
-        if (retrievalResults.isEmpty()) {
-            prompt.append("暂无相关医学知识匹配。\n");
-        } else {
-            for (int i = 0; i < retrievalResults.size(); i++) {
-                Document doc = retrievalResults.get(i);
-                prompt.append(i + 1).append(". ").append(doc.getText()).append("\n");
+        if (useKnowledgeBase) {
+            prompt.append("【参考知识】\n");
+            if (retrievalResults.isEmpty()) {
+                prompt.append("暂无相关医学知识匹配。\n");
+            } else {
+                for (int i = 0; i < retrievalResults.size(); i++) {
+                    Document doc = retrievalResults.get(i);
+                    prompt.append(i + 1).append(". ").append(doc.getText()).append("\n");
+                }
             }
+            prompt.append("\n");
         }
 
-        prompt.append("\n【").append(profileContext).append("】\n");
+        prompt.append("【").append(profileContext).append("】\n");
 
         // 历史对话
         if (!history.isEmpty()) {
@@ -377,7 +380,12 @@ public class AiConsultationService {
 
         prompt.append("\n【用户当前症状描述】\n");
         prompt.append(userMessage).append("\n");
-        prompt.append("\n请根据以上参考知识、用户健康档案和历史对话，对用户进行专业的医疗问诊分析。");
+
+        if (useKnowledgeBase) {
+            prompt.append("\n请根据以上参考知识、用户健康档案和历史对话，对用户进行专业的医疗问诊分析。");
+        } else {
+            prompt.append("\n请根据你的医学知识、用户健康档案和历史对话，对用户进行专业的医疗问诊分析。");
+        }
 
         return prompt.toString();
     }
