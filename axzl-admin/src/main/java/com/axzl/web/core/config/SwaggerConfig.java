@@ -53,9 +53,9 @@ public class SwaggerConfig
     {
         return new Info()
             // 设置标题
-            .title("标题：若依管理系统_接口文档")
+            .title("标题：安心AI问诊平台_接口文档")
             // 描述
-            .description("描述：用于管理集团旗下公司的人员信息,具体包括XXX,XXX模块...")
+            .description("描述：安心AI问诊平台是一个基于Spring AI和RAG技术的智能医疗问诊系统，提供AI辅助问诊、医学知识库管理、健康档案管理和健康知识学习等功能模块")
             // 作者信息
             .contact(new Contact().name(axzlConfig.getName()))
             // 版本

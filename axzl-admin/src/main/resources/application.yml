@@ -3,15 +3,15 @@ axzl:
   # 名称
   name: AXZL
   # 版本
-  version: 3.9.1
+  version: 0.1.2
   # 版权年份
   copyrightYear: 2026
-  # 文件路径 示例（ Windows配置D:/ruoyi/uploadPath，Linux配置 /home/ruoyi/uploadPath）
-  profile: D:/axzl/uploadPath
+  # 文件路径
+  profile: D:/tmp/data/axzl/uploadPath
   # 获取ip地址开关
   addressEnabled: false
   # 验证码类型 math 数字计算 char 字符验证
-  captchaType: math
+  captchaType: char
 
 # 开发环境配置
 server:
@@ -129,12 +129,6 @@ spring:
         indexType: IVF_FLAT
         metricType: COSINE
         initialize-schema: true
-#    chat:
-#      memory:
-#        repository:
-#          jdbc:
-#            initialize-schema: never
-
 
 # token配置
 token:
@@ -205,4 +199,4 @@ xss:
   # 排除链接（多个用逗号分隔）
   excludes: /system/notice
   # 匹配链接
-  urlPatterns: /system/*,/monitor/*,/tool/*
+  urlPatterns: /system/*,/monitor/*,/tool/*,/biz/*,/common/*
