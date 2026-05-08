@@ -1,11 +1,11 @@
 package com.axzl.web.controller.biz;
 
 
-import com.axzl.biz.service.IAiConsultationService;
 import com.axzl.biz.domain.ChatSession;
 import com.axzl.biz.domain.dto.ChatRequest;
 import com.axzl.biz.domain.dto.SatisfactionRequest;
 import com.axzl.biz.domain.vo.ChatSessionDetail;
+import com.axzl.biz.service.IAiConsultationService;
 import com.axzl.biz.service.IChatMessageService;
 import com.axzl.biz.service.IChatSessionService;
 import com.axzl.common.annotation.Log;
@@ -28,7 +28,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Flux;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -141,9 +140,7 @@ public class ConsultationController extends BaseController {
         SseEmitter emitter = new SseEmitter(300_000L);
 
         // 注册完成和错误回调，确保资源正确释放
-        emitter.onCompletion(() -> {
-            logger.info("SSE连接已完成 - 会话: {}", sessionId);
-        });
+        emitter.onCompletion(() -> logger.info("SSE连接已完成 - 会话: {}", sessionId));
 
         emitter.onTimeout(() -> {
             logger.warn("SSE连接超时 - 会话: {}", sessionId);
