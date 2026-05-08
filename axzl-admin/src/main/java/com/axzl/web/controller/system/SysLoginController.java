@@ -66,7 +66,7 @@ public class SysLoginController
 
     /**
      * 获取用户信息
-     * 
+     *
      * @return 用户信息
      */
     @GetMapping("getInfo")
@@ -76,10 +76,11 @@ public class SysLoginController
         SysUser user = loginUser.getUser();
         // 角色集合
         Set<String> roles = permissionService.getRolePermission(user);
-        // 权限集合
-        Set<String> permissions = permissionService.getMenuPermission(user);
-        if (!loginUser.getPermissions().equals(permissions))
+        // 权限集合 - 优先使用缓存的权限，避免重复查询
+        Set<String> permissions = loginUser.getPermissions();
+        if (permissions == null || permissions.isEmpty())
         {
+            permissions = permissionService.getMenuPermission(user);
             loginUser.setPermissions(permissions);
             tokenService.refreshToken(loginUser);
         }

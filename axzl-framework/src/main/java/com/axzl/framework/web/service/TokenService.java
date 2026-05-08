@@ -2,6 +2,7 @@ package com.axzl.framework.web.service;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -156,7 +157,7 @@ public class TokenService
 
     /**
      * 设置用户代理信息
-     * 
+     *
      * @param loginUser 登录信息
      */
     public void setUserAgent(LoginUser loginUser)
@@ -164,9 +165,19 @@ public class TokenService
         String userAgent = ServletUtils.getRequest().getHeader("User-Agent");
         String ip = IpUtils.getIpAddr();
         loginUser.setIpaddr(ip);
-        loginUser.setLoginLocation(AddressUtils.getRealAddressByIP(ip));
         loginUser.setBrowser(UserAgentUtils.getBrowser(userAgent));
         loginUser.setOs(UserAgentUtils.getOperatingSystem(userAgent));
+        // 异步解析IP地址，不阻塞登录流程
+        loginUser.setLoginLocation(AddressUtils.UNKNOWN);
+        CompletableFuture.supplyAsync(() -> AddressUtils.getRealAddressByIP(ip))
+                .thenApply(location -> {
+                    loginUser.setLoginLocation(location);
+                    return location;
+                })
+                .exceptionally(ex -> {
+                    log.warn("异步解析IP地址失败: {}", ex.getMessage());
+                    return AddressUtils.UNKNOWN;
+                });
     }
 
     /**

@@ -1,9 +1,15 @@
-package com.axzl.biz.service;
+package com.axzl.biz.service.impl;
 
 import com.alibaba.fastjson2.JSON;
 import com.axzl.biz.domain.ChatMessage;
 import com.axzl.biz.domain.ChatSession;
 import com.axzl.biz.domain.UserProfile;
+import com.axzl.biz.service.IAiConsultationService;
+import com.axzl.biz.service.IBizKnowledgeMetaService;
+import com.axzl.biz.service.IChatMessageService;
+import com.axzl.biz.service.IChatSessionService;
+import com.axzl.biz.service.IUserProfileService;
+import com.axzl.biz.service.SpringAIClientFactory;
 import com.axzl.common.utils.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +25,7 @@ import reactor.core.publisher.Flux;
 import java.util.*;
 
 /**
- * AI智能问诊服务
+ * AI智能问诊服务实现类
  * 基于 Spring AI 实现完整 RAG 流程：
  * 用户输入 → Embedding → VectorStore检索 → Prompt构建 → ChatClient生成 → 保存 → 返回
  * 
@@ -28,9 +34,9 @@ import java.util.*;
  * @author liuchao
  */
 @Service
-public class AiConsultationService {
+public class AiConsultationServiceImpl implements IAiConsultationService {
 
-    private static final Logger log = LoggerFactory.getLogger(AiConsultationService.class);
+    private static final Logger log = LoggerFactory.getLogger(AiConsultationServiceImpl.class);
 
     @Autowired
     private SpringAIClientFactory clientFactory;
@@ -57,6 +63,7 @@ public class AiConsultationService {
      * @param userMessage 用户消息内容
      * @return AI回复
      */
+    @Override
     public String chat(Long userId,String sessionId, String userMessage, boolean useKnowledgeBase) {
 
         log.info("AI问诊 - 用户: {}, 会话: {}, 消息: {}, 知识库增强: {}", userId, sessionId, userMessage, useKnowledgeBase);
@@ -157,6 +164,7 @@ public class AiConsultationService {
      * @param userMessage 用户消息内容
      * @return AI回复的Flux流
      */
+    @Override
     public Flux<String> chatStream(Long userId,String sessionId, String userMessage, boolean useKnowledgeBase) {
         log.info("AI问诊(流式) - 用户: {}, 会话: {}, 消息: {}, 知识库增强: {}", userId, sessionId, userMessage, useKnowledgeBase);
         // 1. 获取或创建会话
@@ -217,13 +225,15 @@ public class AiConsultationService {
             ChatClient currentChatClient = clientFactory.getDefaultChatClient();
             aiResponse = currentChatClient.prompt()
                     .user(prompt)
-                    .stream().content();
+                    .stream().content()
+                    .cache(); // 缓存流，使多个订阅者共享同一个AI调用
         } catch (Exception e) {
             log.error("AI调用失败", e);
             return Flux.just("抱歉，AI服务暂时不可用，请稍后重试。您可以先描述更多症状信息，我会在服务恢复后为您分析。");
         }
 
         // 8. 在流结束后异步保存完整的AI回复到数据库
+        //    使用独立的订阅来累积响应，确保即使前端断开也能保存
         final String finalSessionId = sessionId;
         final Long finalUserId = userId;
         final List<Map<String, Object>> finalRetrievalDetails = retrievalDetails;
@@ -231,32 +241,50 @@ public class AiConsultationService {
         final String finalPrompt = prompt;
         final String finalUserMessage = userMessage;
         final List<Document> finalRetrievalResults = retrievalResults;
-        
+
         // 使用 StringBuilder 累积完整响应
         final StringBuilder responseBuilder = new StringBuilder();
-        
-        return aiResponse
-                .doOnNext(chunk -> {
-                    // 累积每个文本块
-                    responseBuilder.append(chunk);
-                })
-                .doOnComplete(() -> {
-                    // 流完成后，异步保存完整响应到数据库
+
+        // 先启动一个后台订阅来累积并保存响应
+        // 这个订阅不受前端SSE连接影响
+        aiResponse
+                .doOnNext(responseBuilder::append)
+                .doFinally(signalType -> {
+                    // 无论流如何结束（正常完成/错误/取消），都保存已累积的响应
                     String completeResponse = responseBuilder.toString();
-                    saveAiResponseAsync(
-                        finalSessionId, 
-                        finalUserId, 
-                        completeResponse, 
-                        finalRetrievalDetails,
-                        finalSession,
-                        finalPrompt,
-                        finalUserMessage,
-                        finalRetrievalResults
-                    );
+                    if (!completeResponse.isEmpty()) {
+                        saveAiResponseAsync(
+                            finalSessionId,
+                            finalUserId,
+                            completeResponse,
+                            finalRetrievalDetails,
+                            finalSession,
+                            finalPrompt,
+                            finalUserMessage,
+                            finalRetrievalResults
+                        );
+                    } else {
+                        log.warn("AI响应为空，跳过保存 - 会话: {}", finalSessionId);
+                    }
                 })
-                .doOnError(error -> {
-                    log.error("流式响应出错 - 会话: {}", finalSessionId, error);
-                });
+                .subscribe(
+                    chunk -> {}, // 仅累积，不做其他处理
+                    error -> {
+                        String message = error.getMessage();
+                        if (message != null && (message.contains("你的主机中的软件中止了一个已建立的连接")
+                                || message.contains("Connection reset by peer")
+                                || message.contains("Broken pipe")
+                                || message.contains("AsyncRequestNotUsableException")
+                                || message.contains("ResponseBodyEmitter has already completed"))) {
+                            log.debug("AI流处理客户端已断开 - 会话: {}", finalSessionId);
+                        } else {
+                            log.error("AI流处理出错 - 会话: {}", finalSessionId, error);
+                        }
+                    }
+                );
+
+        // 返回同一个缓存的Flux给Controller用于SSE推送
+        return aiResponse;
     }
 
     /**

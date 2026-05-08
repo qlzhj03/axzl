@@ -2,7 +2,7 @@ package com.axzl.web.controller.biz;
 
 import com.axzl.biz.domain.BizDocument;
 import com.axzl.biz.domain.BizKnowledgeMeta;
-import com.axzl.biz.service.DocumentProcessorService;
+import com.axzl.biz.service.IDocumentProcessorService;
 import com.axzl.biz.service.IBizDocumentService;
 import com.axzl.biz.service.IBizKnowledgeMetaService;
 import com.axzl.common.annotation.Log;
@@ -46,7 +46,7 @@ public class KnowledgeController extends BaseController {
     private IBizDocumentService documentService;
 
     @Autowired
-    private DocumentProcessorService documentProcessorService;
+    private IDocumentProcessorService documentProcessorService;
 
     // ==================== 管理端接口 - 知识管理 ====================
 

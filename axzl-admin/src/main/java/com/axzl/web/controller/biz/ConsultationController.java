@@ -1,7 +1,7 @@
 package com.axzl.web.controller.biz;
 
 
-import com.axzl.biz.service.AiConsultationService;
+import com.axzl.biz.service.IAiConsultationService;
 import com.axzl.biz.domain.ChatSession;
 import com.axzl.biz.domain.dto.ChatRequest;
 import com.axzl.biz.domain.dto.SatisfactionRequest;
@@ -52,7 +52,7 @@ public class ConsultationController extends BaseController {
     private IChatMessageService messageService;
 
     @Autowired
-    private AiConsultationService aiConsultationService;
+    private IAiConsultationService aiConsultationService;
 
     @Autowired
     private SysUserMapper sysUserMapper;
@@ -151,53 +151,84 @@ public class ConsultationController extends BaseController {
         });
 
         emitter.onError((throwable) -> {
-            logger.error("SSE连接错误 - 会话: {}", sessionId, throwable);
+            // 客户端断开连接是正常行为，降级为warn日志
+            if (isClientDisconnect(throwable)) {
+                logger.warn("SSE客户端断开连接 - 会话: {}", sessionId);
+            } else {
+                logger.error("SSE连接错误 - 会话: {}", sessionId, throwable);
+            }
         });
 
         // 在线程池中异步处理流式响应
         sseExecutor.execute(() -> {
             final Logger log = LoggerFactory.getLogger(this.getClass());
-            try {
+            // 标记客户端是否已断开
+            final boolean[] clientDisconnected = {false};
 
-                // 调用AI服务获取流式响应
+            try {
+                // 调用AI服务获取流式响应（服务内部已启动独立订阅确保数据保存）
                 Flux<String> responseFlux = aiConsultationService.chatStream(userId, sessionId, request.getContent(), request.isUseKnowledgeBase());
 
                 // 订阅流式响应并发送到前端
                 responseFlux.subscribe(chunk -> {
+                    if (clientDisconnected[0]) {
+                        return; // 客户端已断开，跳过发送
+                    }
                     try {
-                        // 直接发送原始文本块，Spring会自动处理SSE格式
-                        // 文本中的\n会被保留在data值中
                         emitter.send(chunk);
-                    } catch (IOException e) {
-                        log.error("发送SSE数据失败", e);
-                        emitter.completeWithError(e);
+                    } catch (Exception e) {
+                        if (isClientDisconnect(e)) {
+                            clientDisconnected[0] = true;
+                            log.debug("SSE发送数据时客户端已断开 - 会话: {}", sessionId);
+                        } else {
+                            log.error("发送SSE数据失败 - 会话: {}", sessionId, e);
+                        }
                     }
                 }, error -> {
-                    log.error("流式响应出错", error);
-                    try {
-                        emitter.send(SseEmitter.event().name("error").data("AI服务错误: " + error.getMessage()));
-                    } catch (IOException e) {
-                        log.error("发送SSE错误事件失败", e);
+                    if (isClientDisconnect(error)) {
+                        clientDisconnected[0] = true;
+                        log.debug("SSE流式响应客户端已断开 - 会话: {}", sessionId);
+                    } else {
+                        log.error("流式响应出错 - 会话: {}", sessionId, error);
+                        if (!clientDisconnected[0]) {
+                            try {
+                                emitter.send(SseEmitter.event().name("error").data("AI服务错误: " + error.getMessage()));
+                            } catch (Exception ignored) {
+                            }
+                        }
                     }
-                    emitter.completeWithError(error);
+                    try {
+                        emitter.complete();
+                    } catch (Exception ignored) {
+                    }
                 }, () -> {
+                    if (clientDisconnected[0]) {
+                        return; // 客户端已断开，跳过发送
+                    }
                     // 流完成时发送结束事件
                     try {
                         emitter.send(SseEmitter.event().name("end").data("[DONE]"));
                         emitter.complete();
-                    } catch (IOException e) {
-                        log.error("发送SSE结束事件失败", e);
-                        emitter.completeWithError(e);
+                    } catch (Exception e) {
+                        if (isClientDisconnect(e)) {
+                            clientDisconnected[0] = true;
+                        } else {
+                            log.error("发送SSE结束事件失败 - 会话: {}", sessionId, e);
+                        }
                     }
                 });
             } catch (Exception e) {
-                log.error("启动流式聊天失败", e);
-                try {
-                    emitter.send(SseEmitter.event().name("error").data("启动流式聊天失败: " + e.getMessage()));
-                } catch (IOException ex) {
-                    log.error("发送SSE错误事件失败", ex);
+                log.error("启动流式聊天失败 - 会话: {}", sessionId, e);
+                if (!clientDisconnected[0]) {
+                    try {
+                        emitter.send(SseEmitter.event().name("error").data("启动流式聊天失败: " + e.getMessage()));
+                    } catch (Exception ignored) {
+                    }
                 }
-                emitter.completeWithError(e);
+                try {
+                    emitter.completeWithError(e);
+                } catch (Exception ignored) {
+                }
             }
         });
 
@@ -319,6 +350,24 @@ public class ConsultationController extends BaseController {
             return error("满意度评分必须在1-5之间");
         }
         return toAjax(sessionService.updateSatisfaction(sessionId, request.getSatisfaction()));
+    }
+
+    /**
+     * 判断是否为客户端断开连接异常
+     */
+    private boolean isClientDisconnect(Throwable throwable) {
+        if (throwable == null) {
+            return false;
+        }
+        String message = throwable.getMessage();
+        if (message != null && (message.contains("你的主机中的软件中止了一个已建立的连接")
+                || message.contains("Connection reset by peer")
+                || message.contains("Broken pipe")
+                || message.contains("AsyncRequestNotUsableException"))) {
+            return true;
+        }
+        String className = throwable.getClass().getSimpleName();
+        return className.contains("ClientAbort") || className.contains("AsyncRequestNotUsable");
     }
 
     /**

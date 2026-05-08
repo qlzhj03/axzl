@@ -1,6 +1,7 @@
 package com.axzl.framework.web.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.apache.catalina.connector.ClientAbortException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingPathVariableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import com.axzl.common.constant.HttpStatus;
 import com.axzl.common.core.domain.AjaxResult;
@@ -153,5 +155,23 @@ public class GlobalExceptionHandler
     public AjaxResult handleDemoModeException(DemoModeException e)
     {
         return AjaxResult.error("演示模式，不允许操作");
+    }
+
+    /**
+     * SSE客户端断开连接异常（正常行为，降级为debug日志）
+     */
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    public void handleAsyncRequestNotUsableException(AsyncRequestNotUsableException e, HttpServletRequest request)
+    {
+        log.debug("SSE客户端断开连接: {}", request.getRequestURI());
+    }
+
+    /**
+     * 客户端中断连接异常（正常行为，降级为debug日志）
+     */
+    @ExceptionHandler(ClientAbortException.class)
+    public void handleClientAbortException(ClientAbortException e, HttpServletRequest request)
+    {
+        log.debug("客户端中断连接: {}", request.getRequestURI());
     }
 }

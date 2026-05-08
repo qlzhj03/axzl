@@ -1,7 +1,8 @@
-package com.axzl.biz.ai.service;
+package com.axzl.biz.service.impl;
 
 import com.axzl.biz.domain.BizKnowledgeMeta;
 import com.axzl.biz.service.IBizKnowledgeMetaService;
+import com.axzl.biz.service.IKnowledgeImportService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
@@ -13,15 +14,15 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 
 /**
- * 知识库向量导入服务
+ * 知识库向量导入服务实现类
  * 将MySQL中的知识元数据向量化并存储到Milvus
  *
  * @author liuchao
  */
 @Service
-public class KnowledgeImportService {
+public class KnowledgeImportServiceImpl implements IKnowledgeImportService {
 
-    private static final Logger log = LoggerFactory.getLogger(KnowledgeImportService.class);
+    private static final Logger log = LoggerFactory.getLogger(KnowledgeImportServiceImpl.class);
 
     /** 批量导入条数 */
     private static final int BATCH_SIZE = 20;
@@ -40,6 +41,7 @@ public class KnowledgeImportService {
      *
      * @param knowledgeId 知识ID
      */
+    @Override
     public void importSingleKnowledge(Long knowledgeId) {
         BizKnowledgeMeta meta = knowledgeMetaService.selectKnowledgeMetaById(knowledgeId);
         if (meta == null) {
@@ -54,6 +56,7 @@ public class KnowledgeImportService {
      *
      * @return 导入数量
      */
+    @Override
     public int importAllUnprocessed() {
         BizKnowledgeMeta query = new BizKnowledgeMeta();
         query.setVectorStatus("0");
@@ -140,6 +143,7 @@ public class KnowledgeImportService {
      *
      * @param knowledgeId 知识ID
      */
+    @Override
     public void deleteKnowledgeVector(Long knowledgeId) {
         BizKnowledgeMeta meta = knowledgeMetaService.selectKnowledgeMetaById(knowledgeId);
         if (meta == null || meta.getVectorId() == null || meta.getVectorId().isEmpty()) {

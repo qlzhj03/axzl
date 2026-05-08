@@ -1,7 +1,11 @@
-package com.axzl.biz.service;
+package com.axzl.biz.service.impl;
 
 import com.axzl.biz.domain.BizDocument;
 import com.axzl.biz.domain.BizKnowledgeMeta;
+import com.axzl.biz.service.IBizDocumentService;
+import com.axzl.biz.service.IBizKnowledgeMetaService;
+import com.axzl.biz.service.IDocumentProcessorService;
+import com.axzl.biz.service.SpringAIClientFactory;
 import com.axzl.biz.utils.CustomDocumentReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,15 +20,15 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 
 /**
- * 文档处理服务
+ * 文档处理服务实现类
  * 基于 Spring AI 标准接口实现文档解析、切分、向量化全流程
  *
  * @author liuchao
  */
 @Service
-public class DocumentProcessorService {
+public class DocumentProcessorServiceImpl implements IDocumentProcessorService {
 
-    private static final Logger log = LoggerFactory.getLogger(DocumentProcessorService.class);
+    private static final Logger log = LoggerFactory.getLogger(DocumentProcessorServiceImpl.class);
 
     /** 小文档阈值：小于此字符数则不切分 */
     private static final int SMALL_DOC_THRESHOLD = 3000;
@@ -64,6 +68,7 @@ public class DocumentProcessorService {
      * @param fileContent 文件内容（字节数组）
      */
     @Async
+    @Override
     public void processDocument(Long documentId, byte[] fileContent) {
         log.info("开始处理文档 ID: {}", documentId);
 

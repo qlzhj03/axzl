@@ -1,5 +1,6 @@
 package com.axzl.framework.web.service;
 
+import java.util.TimerTask;
 import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -171,6 +172,16 @@ public class SysLoginService
      */
     public void recordLoginInfo(Long userId)
     {
-        userService.updateLoginInfo(userId, IpUtils.getIpAddr(), DateUtils.getNowDate());
+        // 在请求线程中捕获IP，异步任务中无法获取HttpServletRequest
+        String ip = IpUtils.getIpAddr();
+        // 异步更新登录信息，不阻塞登录流程
+        AsyncManager.me().execute(new TimerTask()
+        {
+            @Override
+            public void run()
+            {
+                userService.updateLoginInfo(userId, ip, DateUtils.getNowDate());
+            }
+        });
     }
 }
