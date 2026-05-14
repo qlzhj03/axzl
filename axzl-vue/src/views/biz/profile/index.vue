@@ -344,22 +344,22 @@ const viewForm = ref<UserProfile>({})
 
 // 列显隐信息
 const columns = ref<Record<string, TableShowColumns>>({
-  profileId: { label: '档案ID', visible: false },
+  profileId: { label: '档案ID', visible: true },
   userId: { label: '用户ID', visible: false },
   nickName: { label: '用户昵称', visible: true },
-  birthday: { label: '出生日期', visible: false },
+  birthday: { label: '出生日期', visible: true },
   gender: { label: '性别', visible: true },
   bloodType: { label: '血型', visible: true },
   height: { label: '身高(cm)', visible: true },
   weight: { label: '体重(kg)', visible: true },
-  allergyHistory: { label: '过敏史', visible: false },
-  medicalHistory: { label: '既往病史', visible: false },
-  familyHistory: { label: '家族病史', visible: false },
-  lifestyle: { label: '生活习惯', visible: false },
+  allergyHistory: { label: '过敏史', visible: true },
+  medicalHistory: { label: '既往病史', visible: true },
+  familyHistory: { label: '家族病史', visible: true },
+  lifestyle: { label: '生活习惯', visible: true },
   status: { label: '状态', visible: true },
-  remark: { label: '备注', visible: false },
-  createTime: { label: '创建时间', visible: false },
-  updateTime: { label: '更新时间', visible: false }
+  remark: { label: '备注', visible: true },
+  createTime: { label: '创建时间', visible: true },
+  updateTime: { label: '更新时间', visible: true }
 })
 
 /*** 用户导入参数 */

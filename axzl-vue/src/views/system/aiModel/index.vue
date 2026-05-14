@@ -185,12 +185,12 @@
         <el-row>
           <el-col :span="8">
             <el-form-item label="温度" prop="temperature">
-              <el-slider v-model="form.temperature" :min="0" :max="2" :step="0.1" show-input />
+              <el-input-number v-model="form.temperature" :min="0" :max="2" :step="0.1" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="Top-p" prop="topP">
-              <el-slider v-model="form.topP" :min="0" :max="1" :step="0.1" show-input />
+              <el-input-number v-model="form.topP" :min="0" :max="1" :step="0.1" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
@@ -207,12 +207,12 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="频率惩罚" prop="frequencyPenalty">
-              <el-slider v-model="form.frequencyPenalty" :min="-2" :max="2" :step="0.1" show-input />
+              <el-input-number v-model="form.frequencyPenalty" :min="-2" :max="2" :step="0.1" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="存在惩罚" prop="presencePenalty">
-              <el-slider v-model="form.presencePenalty" :min="-2" :max="2" :step="0.1" show-input />
+              <el-input-number v-model="form.presencePenalty" :min="-2" :max="2" :step="0.1" style="width: 100%" />
             </el-form-item>
           </el-col>
         </el-row>

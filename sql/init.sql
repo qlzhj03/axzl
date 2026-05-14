@@ -248,9 +248,6 @@ INSERT INTO sys_menu VALUES('4012', '档案删除',     '404', '4', '', '', '', 
 INSERT INTO sys_menu VALUES('4023', '档案导出',     '404', '5', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:profile:export', '#', 'admin', SYSDATE(), '', NULL, '');
 INSERT INTO sys_menu VALUES('4024', '档案导入',     '404', '6', '', '', '', '', 1, 0, 'F', '0', '0', 'biz:profile:import', '#', 'admin', SYSDATE(), '', NULL, '');
 
--- ---- 业务管理 - 问诊测试 (405) ----
-INSERT INTO sys_menu VALUES('405', '问诊测试', '4', '5', 'consultation-test', 'biz/consultation/ConsultationTest', '', '', 1, 0, 'C', '0', '0', 'biz:consultation:test', 'chat-dot-round', 'admin', SYSDATE(), '', NULL, '问诊测试菜单');
-
 
 -- ----------------------------
 -- 4、用户和角色关联表  用户N-1角色
@@ -731,8 +728,6 @@ INSERT IGNORE INTO sys_role_menu VALUES('1', '4011');
 INSERT IGNORE INTO sys_role_menu VALUES('1', '4012');
 INSERT IGNORE INTO sys_role_menu VALUES('1', '4023');
 INSERT IGNORE INTO sys_role_menu VALUES('1', '4024');
--- 问诊测试
-INSERT IGNORE INTO sys_role_menu VALUES('1', '405');
 -- AI模型管理
 INSERT IGNORE INTO sys_role_menu VALUES('1', '118');
 INSERT IGNORE INTO sys_role_menu VALUES('1', '1050');
@@ -777,8 +772,6 @@ INSERT IGNORE INTO sys_role_menu VALUES('2', '4011');
 INSERT IGNORE INTO sys_role_menu VALUES('2', '4012');
 INSERT IGNORE INTO sys_role_menu VALUES('2', '4023');
 INSERT IGNORE INTO sys_role_menu VALUES('2', '4024');
--- 问诊测试
-INSERT IGNORE INTO sys_role_menu VALUES('2', '405');
 -- AI模型管理（查询/查看/切换）
 INSERT IGNORE INTO sys_role_menu VALUES('2', '118');
 INSERT IGNORE INTO sys_role_menu VALUES('2', '1050');
@@ -809,10 +802,6 @@ INSERT IGNORE INTO sys_role_menu VALUES('3', '4011');
 INSERT IGNORE INTO sys_role_menu VALUES('3', '4012');
 INSERT IGNORE INTO sys_role_menu VALUES('3', '4023');
 INSERT IGNORE INTO sys_role_menu VALUES('3', '4024');
--- 问诊测试
-INSERT IGNORE INTO sys_role_menu VALUES('3', '405');
-
-
 -- ---- 护士助理(role_id=4): 问诊查询 + 档案查询 ----
 -- 业务管理目录
 INSERT IGNORE INTO sys_role_menu VALUES('4', '4');
@@ -825,15 +814,9 @@ INSERT IGNORE INTO sys_role_menu VALUES('4', '4015');
 -- 健康档案管理（仅查询）
 INSERT IGNORE INTO sys_role_menu VALUES('4', '404');
 INSERT IGNORE INTO sys_role_menu VALUES('4', '4011');
--- 问诊测试
-INSERT IGNORE INTO sys_role_menu VALUES('4', '405');
-
-
--- ---- 患者(role_id=5): 问诊测试 + 个人档案 ----
+-- ---- 患者(role_id=5): 智能问诊 + 个人档案 ----
 -- 业务管理目录
 INSERT IGNORE INTO sys_role_menu VALUES('5', '4');
--- 问诊测试（主要功能入口）
-INSERT IGNORE INTO sys_role_menu VALUES('5', '405');
 -- 问诊相关权限（流式对话/历史/详情/删除/编辑/置顶/满意度）
 INSERT IGNORE INTO sys_role_menu VALUES('5', '403');
 INSERT IGNORE INTO sys_role_menu VALUES('5', '4007');
