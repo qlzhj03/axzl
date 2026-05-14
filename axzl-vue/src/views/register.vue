@@ -11,10 +11,10 @@
       <div class="register-left">
         <div class="brand-section">
           <div class="logo-wrapper">
-            <svg-icon icon-class="logo" class="logo-icon" />
+            <img src="@/assets/logo/logo.png" alt="logo" class="logo-img" />
           </div>
           <h1 class="brand-title">{{ title }}</h1>
-          <p class="brand-subtitle">智能问诊管理系统</p>
+          <p class="brand-subtitle">智能问诊系统</p>
           <div class="benefits-list">
             <div class="benefit-item">
               <svg-icon icon-class="guide" class="benefit-icon" />
@@ -40,7 +40,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 右侧注册表单 -->
       <div class="register-right">
         <div class="register-box">
@@ -247,7 +247,7 @@ getCode()
   width: 100%;
   height: 100vh;
   overflow: hidden;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #2b7de9 0%, #409EFF 50%, #66b1ff 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -319,7 +319,7 @@ getCode()
 // 左侧品牌区域
 .register-left {
   flex: 1.2;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #2b7de9 0%, #409EFF 50%, #66b1ff 100%);
   padding: 50px 45px;
   display: flex;
   align-items: center;
@@ -369,9 +369,10 @@ getCode()
   50% { transform: scale(1.05); }
 }
 
-.logo-icon {
-  font-size: 45px;
-  color: white;
+.logo-img {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
 }
 
 .brand-title {
@@ -462,7 +463,7 @@ getCode()
   font-weight: 700;
   color: #1a1a1a;
   margin-bottom: 8px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #2b7de9 0%, #409EFF 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -493,8 +494,8 @@ getCode()
   
   &:focus-within {
     background: white;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: #409EFF;
+    box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.1);
   }
   
   .input-icon {
@@ -505,7 +506,7 @@ getCode()
   }
   
   &:focus-within .input-icon {
-    color: #667eea;
+    color: #409EFF;
   }
 }
 
@@ -548,9 +549,9 @@ getCode()
   flex-shrink: 0;
   
   &:hover {
-    border-color: #667eea;
+    border-color: #409EFF;
     transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    box-shadow: 0 4px 12px rgba(64, 158, 255, 0.2);
   }
 }
 
@@ -565,20 +566,20 @@ getCode()
   width: 100%;
   height: 48px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #2b7de9 0%, #409EFF 100%);
   border: none;
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 2px;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 15px rgba(64, 158, 255, 0.4);
   margin-top: 8px;
-  
+
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    box-shadow: 0 6px 20px rgba(64, 158, 255, 0.6);
   }
-  
+
   &:active {
     transform: translateY(0);
   }
@@ -594,16 +595,16 @@ getCode()
   margin-top: 18px;
   font-size: 14px;
   color: #666;
-  
+
   a {
-    color: #667eea;
+    color: #409EFF;
     text-decoration: none;
     font-weight: 600;
     margin-left: 5px;
     transition: all 0.3s ease;
-    
+
     &:hover {
-      color: #764ba2;
+      color: #2b7de9;
       text-decoration: underline;
     }
   }

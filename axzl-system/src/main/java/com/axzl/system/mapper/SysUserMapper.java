@@ -152,4 +152,11 @@ public interface SysUserMapper
      * @return 用户列表
      */
     public List<SysUser> selectUserByIds(@Param("userIds") List<Long> userIds);
+
+    /**
+     * 查询有效用户总数
+     *
+     * @return 用户总数
+     */
+    public int selectUserCount();
 }

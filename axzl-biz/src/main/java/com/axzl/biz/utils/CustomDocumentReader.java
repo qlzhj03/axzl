@@ -109,10 +109,16 @@ public class CustomDocumentReader {
     }
 
     /**
-     * 从InputStream读取文本
+     * 从InputStream读取文本，自动检测编码
      */
     private String readTextStream(InputStream inputStream) throws IOException {
-        return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+        byte[] bytes = inputStream.readAllBytes();
+        // 优先尝试UTF-8，如果包含替换字符则尝试GBK
+        String text = new String(bytes, StandardCharsets.UTF_8);
+        if (text.contains("�")) {
+            text = new String(bytes, java.nio.charset.Charset.forName("GBK"));
+        }
+        return text;
     }
 
     /**

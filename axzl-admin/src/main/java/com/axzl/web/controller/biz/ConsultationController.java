@@ -35,7 +35,7 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 /**
- * 智能问诊Controller（统一管理端和用户端）
+ * 智能问诊Controller
  *
  * @author liuchao
  */
@@ -234,7 +234,7 @@ public class ConsultationController extends BaseController {
 
 
     /**
-     * 问诊历史（用户端，分页）
+     * 问诊历史
      */
     @Operation(summary = "问诊历史记录", description = "获取当前用户的问诊会话历史列表")
     @PreAuthorize("@ss.hasPermi('biz:consultation:history')")
@@ -247,7 +247,7 @@ public class ConsultationController extends BaseController {
     }
 
     /**
-     * 会话详情（用户端）
+     * 会话详情
      */
     @Operation(summary = "会话详情", description = "获取指定会话的详细信息，包含会话信息和消息列表")
     @PreAuthorize("@ss.hasPermi('biz:consultation:detail')")
@@ -297,7 +297,7 @@ public class ConsultationController extends BaseController {
     }
 
     /**
-     * 删除会话（用户端）
+     * 删除会话
      */
     @Operation(summary = "删除会话", description = "删除指定的问诊会话")
     @PreAuthorize("@ss.hasPermi('biz:consultation:remove')")
@@ -368,7 +368,7 @@ public class ConsultationController extends BaseController {
     }
 
     /**
-     * 修改会话标题（用户端）
+     * 修改会话标题
      */
     @Operation(summary = "修改会话标题", description = "修改指定会话的标题")
     @PreAuthorize("@ss.hasPermi('biz:consultation:edit')")
@@ -390,7 +390,7 @@ public class ConsultationController extends BaseController {
     }
 
     /**
-     * 置顶/取消置顶会话（用户端）
+     * 置顶/取消置顶会话
      */
     @Operation(summary = "置顶/取消置顶会话", description = "对指定会话进行置顶或取消置顶操作")
     @PreAuthorize("@ss.hasPermi('biz:consultation:pin')")

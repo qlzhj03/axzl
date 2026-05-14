@@ -2,16 +2,13 @@
   <div class="patient-app-wrapper">
     <header class="patient-top-nav">
       <div class="nav-left">
-        <div class="logo" @click="router.push('/patient/home')">安心诊疗</div>
+        <router-link to="/patient/home" class="logo">安心诊疗</router-link>
         <ul class="nav-menu">
-          <li
-            v-for="item in menuItems"
-            :key="item.path"
-            :class="['menu-item', { active: isActive(item.path) }]"
-            @click="router.push(item.path)"
-          >
-            <el-icon><component :is="item.icon" /></el-icon>
-            <span>{{ item.label }}</span>
+          <li v-for="item in menuItems" :key="item.path">
+            <router-link :to="item.path" :class="['menu-item', { active: isActive(item.path) }]">
+              <el-icon><component :is="item.icon" /></el-icon>
+              <span>{{ item.label }}</span>
+            </router-link>
           </li>
         </ul>
       </div>
@@ -47,8 +44,10 @@
 
     <main class="patient-main-container">
       <router-view v-slot="{ Component }">
-        <transition name="patient-fade" mode="out-in">
-          <component :is="Component" />
+        <transition name="patient-slide" mode="out-in">
+          <keep-alive>
+            <component :is="Component" :key="$route.path" />
+          </keep-alive>
         </transition>
       </router-view>
     </main>
@@ -59,7 +58,7 @@
 import { useRoute, useRouter } from 'vue-router'
 import useSettingsStore from '@/store/modules/settings'
 import useUserStore from '@/store/modules/user'
-import { Moon, Sunny, ArrowDown, User, Lock, SwitchButton, HomeFilled, ChatDotRound, FirstAidKit, Document, Reading } from '@element-plus/icons-vue'
+import { Moon, Sunny, ArrowDown, User, Lock, SwitchButton, HomeFilled, ChatDotRound, FirstAidKit, AlarmClock } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 
 const route = useRoute()
@@ -71,8 +70,7 @@ const menuItems = [
   { path: '/patient/home', label: '首页', icon: HomeFilled },
   { path: '/patient/consultation', label: '智能问诊', icon: ChatDotRound },
   { path: '/patient/health', label: '健康档案', icon: FirstAidKit },
-  { path: '/patient/learning', label: '健康知识', icon: Reading },
-  { path: '/patient/documents', label: '我的文档', icon: Document }
+  { path: '/patient/medication', label: '用药提醒', icon: AlarmClock }
 ]
 
 function isActive(path: string) {
@@ -136,6 +134,12 @@ function handleCommand(command: string) {
   color: var(--el-color-primary);
   cursor: pointer;
   white-space: nowrap;
+  text-decoration: none;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 0.8;
+  }
 }
 
 .nav-menu {
@@ -144,6 +148,10 @@ function handleCommand(command: string) {
   gap: 4px;
   margin: 0;
   padding: 0;
+
+  li {
+    list-style: none;
+  }
 }
 
 .menu-item {
@@ -155,18 +163,21 @@ function handleCommand(command: string) {
   color: var(--patient-text-secondary);
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   font-size: 14px;
+  text-decoration: none;
 
   &:hover {
     color: var(--el-color-primary);
     background: var(--el-color-primary-light-9);
+    transform: translateY(-1px);
   }
 
   &.active {
     color: var(--el-color-primary);
     background: var(--el-color-primary-light-9);
     font-weight: 600;
+    box-shadow: 0 2px 8px rgba(var(--el-color-primary-rgb), 0.15);
   }
 }
 
@@ -222,14 +233,23 @@ function handleCommand(command: string) {
   min-height: calc(100vh - 60px);
 }
 
-.patient-fade-enter-active,
-.patient-fade-leave-active {
-  transition: opacity 0.2s ease;
+// 平滑滑动过渡动画
+.patient-slide-enter-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.patient-fade-enter-from,
-.patient-fade-leave-to {
+.patient-slide-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.patient-slide-enter-from {
   opacity: 0;
+  transform: translateX(20px);
+}
+
+.patient-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
 }
 
 @media (max-width: 768px) {

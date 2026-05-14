@@ -43,7 +43,7 @@ public class SessionController extends BaseController {
     /**
      * 查询会话列表（管理端）
      */
-    @Operation(summary = "查询会话列表", description = "管理端：分页查询问诊会话列表")
+    @Operation(summary = "查询会话列表", description = "分页查询问诊会话列表")
     @PreAuthorize("@ss.hasPermi('biz:consultation:list')")
     @GetMapping("/list")
     public TableDataInfo list(ChatSession session) {
@@ -55,7 +55,7 @@ public class SessionController extends BaseController {
     /**
      * 删除会话（管理端）
      */
-    @Operation(summary = "删除会话", description = "管理端：批量删除问诊会话")
+    @Operation(summary = "删除会话", description = "批量删除问诊会话")
     @PreAuthorize("@ss.hasPermi('biz:consultation:remove')")
     @Log(title = "问诊记录", businessType = BusinessType.DELETE)
     @DeleteMapping("/{sessionIds}")
@@ -65,9 +65,9 @@ public class SessionController extends BaseController {
     }
 
     /**
-     * 重命名会话（管理端）
+     * 重命名会话
      */
-    @Operation(summary = "重命名会话", description = "管理端：修改问诊会话名称")
+    @Operation(summary = "重命名会话", description = "修改问诊会话名称")
     @PreAuthorize("@ss.hasPermi('biz:consultation:rename')")
     @Log(title = "修改问诊记录", businessType = BusinessType.UPDATE)
     @PutMapping("/rename")

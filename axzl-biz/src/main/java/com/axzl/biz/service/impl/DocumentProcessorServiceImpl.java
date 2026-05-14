@@ -5,15 +5,12 @@ import com.axzl.biz.domain.BizKnowledgeMeta;
 import com.axzl.biz.service.IBizDocumentService;
 import com.axzl.biz.service.IBizKnowledgeMetaService;
 import com.axzl.biz.service.IDocumentProcessorService;
-import com.axzl.biz.service.SpringAIClientFactory;
 import com.axzl.biz.utils.CustomDocumentReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -39,9 +36,6 @@ public class DocumentProcessorServiceImpl implements IDocumentProcessorService {
     /** 重叠字符数 */
     private static final int CHUNK_OVERLAP = 50;
 
-    /** 批量向量化条数 */
-    private static final int BATCH_SIZE = 20;
-
     @Autowired
     private IBizDocumentService documentService;
 
@@ -49,20 +43,13 @@ public class DocumentProcessorServiceImpl implements IDocumentProcessorService {
     private IBizKnowledgeMetaService knowledgeMetaService;
 
     @Autowired
-    @Lazy
-    private SpringAIClientFactory clientFactory;
-
-    @Autowired
     private VectorStore vectorStore;
-
-    private EmbeddingModel getEmbeddingModel() {
-        return clientFactory.getDefaultEmbeddingModel();
-    }
 
     private final CustomDocumentReader documentReader = new CustomDocumentReader();
 
     /**
      * 异步处理文档：读取 → 切分 → 向量化 → 存储
+     * vectorStore.add() 内部会自动调用 EmbeddingModel 生成向量，无需手动调用 embed()
      *
      * @param documentId 文档ID
      * @param fileContent 文件内容（字节数组）
@@ -87,6 +74,12 @@ public class DocumentProcessorServiceImpl implements IDocumentProcessorService {
                     new java.io.ByteArrayInputStream(fileContent),
                     bizDocument.getFileType());
 
+            if (content == null || content.trim().isEmpty()) {
+                log.error("文档 {} 提取内容为空", documentId);
+                documentService.updateVectorStatus(documentId, "3");
+                return;
+            }
+
             // 保存提取的文本内容
             bizDocument.setExtractedContent(content);
             documentService.updateDocument(bizDocument);
@@ -94,40 +87,35 @@ public class DocumentProcessorServiceImpl implements IDocumentProcessorService {
             // 3. 切分文档
             List<String> chunks;
             if (content.length() < SMALL_DOC_THRESHOLD) {
-                // 小文档：整体向量化
-                chunks = Collections.singletonList(content);
+                chunks = Collections.singletonList(content.trim());
                 log.info("文档 {} 较小({}字符)，整体向量化", documentId, content.length());
             } else {
-                // 大文档：按段落切分
                 chunks = splitByParagraph(content, CHUNK_SIZE, CHUNK_OVERLAP);
                 log.info("文档 {} 较大({}字符)，切分为 {} 块", documentId, content.length(), chunks.size());
+            }
+
+            // 过滤空块
+            chunks = chunks.stream().map(String::trim).filter(c -> !c.isEmpty()).toList();
+            if (chunks.isEmpty()) {
+                log.error("文档 {} 切分后无有效内容", documentId);
+                documentService.updateVectorStatus(documentId, "3");
+                return;
             }
 
             // 4. 更新切分块数
             bizDocument.setChunkCount(chunks.size());
             documentService.updateDocument(bizDocument);
 
-            // 5. 批量向量化并存储
+            // 5. 逐块存储到 Milvus（VectorStore 内部自动 Embedding）
             List<BizKnowledgeMeta> knowledgeMetas = new ArrayList<>();
-            int chunkIndex = 0;
+            int successCount = 0;
+            int failedCount = 0;
 
-            for (int i = 0; i < chunks.size(); i += BATCH_SIZE) {
-                int end = Math.min(i + BATCH_SIZE, chunks.size());
-                List<String> batchChunks = chunks.subList(i, end);
+            for (int i = 0; i < chunks.size(); i++) {
+                String chunk = chunks.get(i);
 
-                // 批量向量化
-                List<float[]> embeddings = new ArrayList<>();
-                for (String chunk : batchChunks) {
-                    float[] embedding = getEmbeddingModel().embed(chunk);
-                    embeddings.add(embedding);
-                }
-
-                // 存储向量和知识元数据
-                for (int j = 0; j < batchChunks.size(); j++) {
-                    String chunk = batchChunks.get(j);
-                    float[] embedding = embeddings.get(j);
-
-                    // 创建Milvus Document
+                try {
+                    // 创建 Document，VectorStore.add() 内部会自动调用 EmbeddingModel 生成向量
                     Document milvusDoc = new Document(
                             chunk,
                             Map.of(
@@ -138,11 +126,10 @@ public class DocumentProcessorServiceImpl implements IDocumentProcessorService {
                                     "related_diseases", "",
                                     "source_type", "doc",
                                     "source_id", documentId,
-                                    "chunk_index", chunkIndex
+                                    "chunk_index", i
                             )
                     );
 
-                    // 存储到Milvus
                     vectorStore.add(List.of(milvusDoc));
 
                     // 创建MySQL知识元数据记录
@@ -156,16 +143,21 @@ public class DocumentProcessorServiceImpl implements IDocumentProcessorService {
                     meta.setVectorStatus("1");
                     meta.setSourceType("doc");
                     meta.setSourceId(documentId);
-                    meta.setChunkIndex(chunkIndex);
+                    meta.setChunkIndex(i);
                     meta.setSource(bizDocument.getFileName());
                     meta.setStatus("0");
                     meta.setCreateTime(new Date());
                     knowledgeMetas.add(meta);
 
-                    chunkIndex++;
+                    successCount++;
+                } catch (Exception e) {
+                    log.warn("文档 {} 第 {} 块存储失败，跳过: {}", documentId, i, e.getMessage());
+                    failedCount++;
                 }
 
-                log.info("文档 {} 已处理 {}/{} 块", documentId, chunkIndex, chunks.size());
+                if ((i + 1) % 50 == 0) {
+                    log.info("文档 {} 进度: {}/{}", documentId, i + 1, chunks.size());
+                }
             }
 
             // 6. 批量保存知识元数据
@@ -173,9 +165,15 @@ public class DocumentProcessorServiceImpl implements IDocumentProcessorService {
                 knowledgeMetaService.insertKnowledgeMeta(meta);
             }
 
-            // 7. 更新状态为已完成
-            documentService.updateVectorStatus(documentId, "2");
-            log.info("文档 {} 处理完成，共 {} 块", documentId, chunks.size());
+            // 7. 更新状态
+            if (successCount == 0) {
+                documentService.updateVectorStatus(documentId, "3");
+                log.error("文档 {} 所有块存储失败", documentId);
+            } else {
+                documentService.updateVectorStatus(documentId, "2");
+                log.info("文档 {} 处理完成，共 {} 块 (成功 {}，失败 {})",
+                        documentId, chunks.size(), successCount, failedCount);
+            }
 
         } catch (Exception e) {
             log.error("文档 {} 处理失败", documentId, e);

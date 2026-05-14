@@ -5,7 +5,7 @@ import vue from "@vitejs/plugin-vue";
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import * as fs from "node:fs";
 
-const baseUrl = 'https://localhost:8080' // 后端接口
+const baseUrl = 'http://localhost:8080' // 后端接口
 
 // https://vitejs.dev/config/
 export default defineConfig(({mode, command}) => {
@@ -48,13 +48,13 @@ export default defineConfig(({mode, command}) => {
         },
         // vite 相关配置
         server: {
-            port: 443,
+            port: 80,
             host: 'localhost',
             open: true,
-            https: {
-                key: fs.readFileSync('./key.pem'),
-                cert: fs.readFileSync('./cert.pem')
-            },
+            // https: {
+            //     key: fs.readFileSync('./key.pem'),
+            //     cert: fs.readFileSync('./cert.pem')
+            // },
             proxy: {
                 // https://cn.vitejs.dev/config/#server-proxy
                 '/dev-api': {

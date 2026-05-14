@@ -11,17 +11,17 @@ axzl:
   # 获取ip地址开关
   addressEnabled: false
   # 验证码类型 math 数字计算 char 字符验证
-  captchaType: char
+  captchaType: math
 
 # 开发环境配置
 server:
   # 服务器的HTTP端口，默认为8080
   port: 8080
-  ssl:
-    key-store: classpath:keystore.p12  # 证书路径
-    key-store-password: 12345678  # 密钥库密码
-    key-store-type: PKCS12            # 证书类型
-    key-alias: tomcat                 # 证书别名
+  #ssl:
+  #  key-store: classpath:keystore.p12  # 证书路径
+  #  key-store-password: 12345678  # 密钥库密码
+  #  key-store-type: PKCS12            # 证书类型
+  #  key-alias: tomcat                 # 证书别名
   servlet:
     # 应用的访问路径
     context-path: /
@@ -180,10 +180,7 @@ springdoc:
       display-name: '通用模块'
       paths-to-match: '/common/**'
       packages-to-scan: com.axzl.web.controller.common
-    - group: '工具模块'
-      display-name: '工具模块'
-      paths-to-match: '/tool/**'
-      packages-to-scan: com.axzl.web.controller.tool
+
 
 # 防盗链配置
 referer:

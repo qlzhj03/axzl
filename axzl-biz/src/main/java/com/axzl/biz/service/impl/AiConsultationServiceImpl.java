@@ -386,7 +386,7 @@ public class AiConsultationServiceImpl implements IAiConsultationService {
         if (useKnowledgeBase) {
             prompt.append("【参考知识】\n");
             if (retrievalResults.isEmpty()) {
-                prompt.append("暂无相关医学知识匹配。\n");
+                prompt.append("直接使用模型基础知识\n");
             } else {
                 for (int i = 0; i < retrievalResults.size(); i++) {
                     Document doc = retrievalResults.get(i);

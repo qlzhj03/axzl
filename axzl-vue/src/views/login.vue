@@ -11,10 +11,10 @@
       <div class="login-left">
         <div class="brand-section">
           <div class="logo-wrapper">
-            <svg-icon icon-class="logo" class="logo-icon" />
+            <img src="@/assets/logo/logo.png" alt="logo" class="logo-img" />
           </div>
           <h1 class="brand-title">{{ title }}</h1>
-          <p class="brand-subtitle">智能问诊管理系统</p>
+          <p class="brand-subtitle">智能问诊系统</p>
           <div class="feature-list">
             <div class="feature-item">
               <svg-icon icon-class="guide" class="feature-icon" />
@@ -31,7 +31,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 右侧登录表单 -->
       <div class="login-right">
         <div class="login-box">
@@ -244,7 +244,7 @@ getCookie()
   width: 100%;
   height: 100vh;
   overflow: hidden;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #2b7de9 0%, #409EFF 50%, #66b1ff 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -316,7 +316,7 @@ getCookie()
 // 左侧品牌区域
 .login-left {
   flex: 1.2;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #2b7de9 0%, #409EFF 50%, #66b1ff 100%);
   padding: 50px 45px;
   display: flex;
   align-items: center;
@@ -366,9 +366,10 @@ getCookie()
   50% { transform: scale(1.05); }
 }
 
-.logo-icon {
-  font-size: 45px;
-  color: white;
+.logo-img {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
 }
 
 .brand-title {
@@ -450,7 +451,7 @@ getCookie()
   font-weight: 700;
   color: #1a1a1a;
   margin-bottom: 8px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #2b7de9 0%, #409EFF 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -481,8 +482,8 @@ getCookie()
   
   &:focus-within {
     background: white;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: var(--el-color-primary);
+    box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.1);
   }
   
   .input-icon {
@@ -493,7 +494,7 @@ getCookie()
   }
   
   &:focus-within .input-icon {
-    color: #667eea;
+    color: var(--el-color-primary);
   }
 }
 
@@ -536,9 +537,9 @@ getCookie()
   flex-shrink: 0;
   
   &:hover {
-    border-color: #667eea;
+    border-color: var(--el-color-primary);
     transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    box-shadow: 0 4px 12px rgba(64, 158, 255, 0.2);
   }
 }
 
@@ -569,14 +570,14 @@ getCookie()
 }
 
 .forgot-link {
-  color: #667eea;
+  color: var(--el-color-primary);
   font-size: 14px;
   text-decoration: none;
   transition: all 0.3s ease;
   font-weight: 500;
-  
+
   &:hover {
-    color: #764ba2;
+    color: #2b7de9;
     text-decoration: underline;
   }
 }
@@ -586,19 +587,19 @@ getCookie()
   width: 100%;
   height: 48px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #2b7de9 0%, #409EFF 100%);
   border: none;
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 2px;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-  
+  box-shadow: 0 4px 15px rgba(64, 158, 255, 0.4);
+
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    box-shadow: 0 6px 20px rgba(64, 158, 255, 0.6);
   }
-  
+
   &:active {
     transform: translateY(0);
   }

@@ -88,7 +88,7 @@ export const constantRoutes = [
     children: [
       {
         path: 'home',
-        component: () => import('@/views/index.vue'),
+        component: () => import('@/views/patient/home/index.vue'),
         name: 'PatientHome',
         meta: { title: '首页' }
       },
@@ -105,34 +105,16 @@ export const constantRoutes = [
         meta: { title: '健康档案' }
       },
       {
-        path: 'documents',
-        component: () => import('@/views/patient/documents/index.vue'),
-        name: 'PatientDocuments',
-        meta: { title: '我的文档' }
+        path: 'medication',
+        component: () => import('@/views/patient/medication/index.vue'),
+        name: 'PatientMedication',
+        meta: { title: '用药提醒' }
       },
       {
         path: 'profile',
         component: () => import('@/views/patient/profile/index.vue'),
         name: 'PatientProfile',
         meta: { title: '个人信息' }
-      },
-      {
-        path: 'learning',
-        component: () => import('@/views/patient/learning/index.vue'),
-        name: 'PatientLearning',
-        meta: { title: '健康知识' }
-      },
-      {
-        path: 'learning/detail/:id',
-        component: () => import('@/views/patient/learning/detail.vue'),
-        name: 'PatientLearningDetail',
-        meta: { title: '文章详情' }
-      },
-      {
-        path: 'learning/bookmarks',
-        component: () => import('@/views/patient/learning/bookmarks.vue'),
-        name: 'PatientLearningBookmarks',
-        meta: { title: '我的收藏' }
       }
     ]
   },
