@@ -42,3 +42,19 @@ export function delKnowledge(ids: number[]) {
     method: 'delete'
   })
 }
+
+// 手动触发向量同步
+export function syncKnowledge() {
+  return request({
+    url: '/biz/knowledge/admin/sync',
+    method: 'post'
+  })
+}
+
+// 查询同步状态（未向量化数量）
+export function getSyncStatus() {
+  return request({
+    url: '/biz/knowledge/admin/sync/status',
+    method: 'get'
+  })
+}

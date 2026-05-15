@@ -48,6 +48,9 @@ public class KnowledgeController extends BaseController {
     @Autowired
     private IDocumentProcessorService documentProcessorService;
 
+    @Autowired
+    private com.axzl.biz.service.IKnowledgeImportService knowledgeImportService;
+
     // ==================== 管理端接口 - 知识管理 ====================
 
     /**
@@ -80,7 +83,12 @@ public class KnowledgeController extends BaseController {
     @Log(title = "知识库管理", businessType = BusinessType.INSERT)
     @PostMapping("/admin")
     public AjaxResult adminAdd(@Validated @RequestBody BizKnowledgeMeta knowledgeMeta) {
-        return toAjax(knowledgeMetaService.insertKnowledgeMeta(knowledgeMeta));
+        knowledgeMeta.setVectorStatus("0");
+        int rows = knowledgeMetaService.insertKnowledgeMeta(knowledgeMeta);
+        if (rows > 0 && knowledgeMeta.getId() != null) {
+            knowledgeImportService.asyncImportSingleKnowledge(knowledgeMeta.getId());
+        }
+        return toAjax(rows);
     }
 
     /**
@@ -104,6 +112,37 @@ public class KnowledgeController extends BaseController {
     public AjaxResult adminRemove(
             @Parameter(description = "知识库ID数组", required = true) @PathVariable Long[] ids) {
         return toAjax(knowledgeMetaService.deleteKnowledgeMetaByIds(ids));
+    }
+
+    // ==================== 管理端接口 - 向量同步 ====================
+
+    /**
+     * 手动触发全量向量同步（异步）
+     */
+    @Operation(summary = "手动同步向量", description = "管理端：手动触发将所有未向量化的知识同步到Milvus向量库")
+    @PreAuthorize("@ss.hasPermi('biz:knowledge:list')")
+    @Log(title = "知识库向量同步", businessType = BusinessType.OTHER)
+    @PostMapping("/admin/sync")
+    public AjaxResult adminSync() {
+        int unprocessed = knowledgeImportService.countPendingSync();
+        if (unprocessed == 0) {
+            return success("没有需要同步的知识");
+        }
+        knowledgeImportService.asyncImportAllUnprocessed();
+        return success("已启动异步同步任务，待处理数量: " + unprocessed);
+    }
+
+    /**
+     * 查询向量同步状态（未向量化记录数）
+     */
+    @Operation(summary = "查询同步状态", description = "管理端：查询未向量化的知识记录数量")
+    @PreAuthorize("@ss.hasPermi('biz:knowledge:list')")
+    @GetMapping("/admin/sync/status")
+    public AjaxResult adminSyncStatus() {
+        int unprocessed = knowledgeImportService.countPendingSync();
+        AjaxResult result = success();
+        result.put("unprocessed", unprocessed);
+        return result;
     }
 
     // ==================== 管理端接口 - 文档管理 ====================

@@ -56,6 +56,18 @@
           v-hasPermi="['biz:knowledge:remove']"
         >删除</el-button>
       </el-col>
+      <el-col :span="1.5">
+        <el-button
+          type="success"
+          plain
+          icon="Refresh"
+          :loading="syncing"
+          @click="handleSync"
+          v-hasPermi="['biz:knowledge:list']"
+        >手动同步向量
+          <el-badge v-if="unprocessedCount > 0" :value="unprocessedCount" :max="99" class="sync-badge" />
+        </el-button>
+      </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
 
@@ -190,7 +202,7 @@
 </template>
 
 <script setup lang="ts" name="Knowledge">
-import { listKnowledge, getKnowledge, addKnowledge, updateKnowledge, delKnowledge } from "@/api/biz/knowledge"
+import { listKnowledge, getKnowledge, addKnowledge, updateKnowledge, delKnowledge, syncKnowledge, getSyncStatus } from "@/api/biz/knowledge"
 
 const { proxy } = getCurrentInstance()
 
@@ -203,6 +215,8 @@ const total = ref<number>(0)
 const dialogOpen = ref<boolean>(false)
 const dialogTitle = ref<string>("")
 const detailOpen = ref<boolean>(false)
+const syncing = ref<boolean>(false)
+const unprocessedCount = ref<number>(0)
 
 const queryParams = ref({
   pageNum: 1,
@@ -292,12 +306,14 @@ function submitForm() {
         proxy?.$modal.msgSuccess("修改成功")
         dialogOpen.value = false
         getList()
+        refreshSyncStatus()
       })
     } else {
       addKnowledge(form.value).then(() => {
-        proxy?.$modal.msgSuccess("新增成功")
+        proxy?.$modal.msgSuccess("新增成功，正在后台自动向量化")
         dialogOpen.value = false
         getList()
+        refreshSyncStatus()
       })
     }
   })
@@ -334,11 +350,40 @@ function getVectorStatusName(status: string): string {
   return nameMap[status] || status
 }
 
+/** 查询未向量化数量 */
+function refreshSyncStatus() {
+  getSyncStatus().then(response => {
+    unprocessedCount.value = response.unprocessed || 0
+  })
+}
+
+/** 手动同步向量 */
+function handleSync() {
+  syncing.value = true
+  syncKnowledge().then(response => {
+    proxy?.$modal.msgSuccess(response.msg || "同步任务已启动")
+    setTimeout(() => {
+      refreshSyncStatus()
+      getList()
+      syncing.value = false
+    }, 3000)
+  }).catch(() => {
+    syncing.value = false
+  })
+}
+
 getList()
+refreshSyncStatus()
 </script>
 
 <style scoped lang="scss">
 .app-container {
   padding: 20px;
+}
+.sync-badge {
+  margin-left: 6px;
+  :deep(.el-badge__content) {
+    vertical-align: super;
+  }
 }
 </style>

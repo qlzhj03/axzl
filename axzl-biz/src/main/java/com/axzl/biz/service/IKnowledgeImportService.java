@@ -16,11 +16,30 @@ public interface IKnowledgeImportService {
     void importSingleKnowledge(Long knowledgeId);
 
     /**
+     * 异步导入单条知识到向量库
+     *
+     * @param knowledgeId 知识ID
+     */
+    void asyncImportSingleKnowledge(Long knowledgeId);
+
+    /**
      * 批量导入未向量化的知识
      *
      * @return 导入数量
      */
     int importAllUnprocessed();
+
+    /**
+     * 异步批量导入所有未向量化的知识
+     */
+    void asyncImportAllUnprocessed();
+
+    /**
+     * 查询待同步的知识数量（未导入 + 失败）
+     *
+     * @return 待同步记录数
+     */
+    int countPendingSync();
 
     /**
      * 删除知识的向量（同步删除Milvus中的数据）
