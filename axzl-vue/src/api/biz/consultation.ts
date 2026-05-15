@@ -1,5 +1,6 @@
 import request from '@/utils/request'
 import { getToken } from '@/utils/auth'
+import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source'
 
 // 查询问诊会话列表
 export function listConsultation(query: any) {
@@ -43,18 +44,57 @@ export function getAdminSessionDetail(sessionId: string, pageNum?: number, pageS
   })
 }
 
+export interface StreamCallbacks {
+  onMessage: (text: string) => void
+  onSessionId?: (sessionId: string) => void
+  onDone?: () => void
+  onError?: (error: Error) => void
+}
+
 // 智能问诊流式对话（SSE）
-export function chatStream(data: any) {
+export function chatStream(data: any, callbacks: StreamCallbacks): AbortController {
+  const controller = new AbortController()
   const token = getToken() || ''
-  return fetch('/dev-api/biz/consultation/stream', {
+
+  fetchEventSource('/dev-api/biz/consultation/stream', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + token,
-      'Accept': 'text/event-stream'
     },
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
+    signal: controller.signal,
+    openWhenHidden: true,
+    onmessage(msg: EventSourceMessage) {
+      if (msg.event === 'end') {
+        callbacks.onDone?.()
+        controller.abort()
+        return
+      }
+      if (msg.event === 'error') {
+        callbacks.onError?.(new Error(msg.data))
+        controller.abort()
+        return
+      }
+      try {
+        const obj = JSON.parse(msg.data)
+        if (obj.sessionId) {
+          callbacks.onSessionId?.(obj.sessionId)
+          return
+        }
+      } catch {}
+      callbacks.onMessage(msg.data)
+    },
+    onclose() {
+      callbacks.onDone?.()
+    },
+    onerror(err) {
+      callbacks.onError?.(err)
+      throw err
+    }
   })
+
+  return controller
 }
 
 // 修改会话标题

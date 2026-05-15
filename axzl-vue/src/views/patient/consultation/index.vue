@@ -383,101 +383,39 @@ async function sendMessage() {
   const aiIdx = messages.value.length
   messages.value.push({ role: 'assistant', content: '' })
 
-  try {
-    const res = await chatStream({
-      sessionId: currentSessionId.value,
-      content,
-      useKnowledgeBase: useKnowledgeBase.value
-    })
+  let acc = ''
 
-    if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
-
-    const reader = res.body.getReader()
-    const decoder = new TextDecoder('utf-8')
-    let acc = ''          // 累积的完整文本
-    let newSid = ''       // 新会话ID
-    let buf = ''          // 未处理完的行缓冲
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      buf += decoder.decode(value, { stream: true })
-      const lines = buf.split('\n')
-      buf = lines.pop() || '' // 最后一行可能不完整
-
-      for (const line of lines) {
-        const trimmed = line.trim()
-        if (!trimmed || trimmed.startsWith(':')) continue // 空行或注释
-
-        // 处理命名事件: event:end / event:error
-        if (trimmed.startsWith('event:')) {
-          const eventName = trimmed.substring(6).trim()
-          if (eventName === 'end' || eventName === 'error') {
-            // 下一行 data: 会携带具体内容，但在循环中会被跳过
-            continue
-          }
-          continue
-        }
-
-        // 处理 data: 行
-        if (trimmed.startsWith('data:')) {
-          const payload = trimmed.substring(5).trim()
-
-          // 结束标记
-          if (payload === '[DONE]') continue
-
-          // 尝试解析 JSON（sessionId 等元数据）
-          try {
-            const obj = JSON.parse(payload)
-            if (obj.sessionId) {
-              newSid = obj.sessionId
-              continue
-            }
-            // error 事件的 JSON
-            if (obj.error || obj.message) continue
-            continue
-          } catch {
-            // 非 JSON = 纯文本 chunk，累加
-          }
-
-          acc += payload
-          messages.value[aiIdx].content = acc
-          scrollToBottom()
-        }
+  chatStream({
+    sessionId: currentSessionId.value,
+    content,
+    useKnowledgeBase: useKnowledgeBase.value
+  }, {
+    onSessionId(sid: string) {
+      if (!currentSessionId.value) {
+        currentSessionId.value = sid
       }
-    }
-
-    // 处理缓冲区中剩余内容
-    if (buf.trim()) {
-      const leftover = buf.trim()
-      if (leftover.startsWith('data:')) {
-        const payload = leftover.substring(5).trim()
-        if (payload && payload !== '[DONE]') {
-          try { JSON.parse(payload) } catch {
-            acc += payload
-            messages.value[aiIdx].content = acc
-          }
-        }
+    },
+    onMessage(text: string) {
+      acc += text
+      messages.value[aiIdx].content = acc
+      scrollToBottom()
+    },
+    onDone() {
+      isStreaming.value = false
+      if (!currentSessionId.value) {
+        loadSessions(true)
       }
+      scrollToBottom()
+    },
+    onError(err: Error) {
+      console.error('SSE error:', err)
+      if (!messages.value[aiIdx].content) {
+        messages.value[aiIdx].content = '抱歉，发生了错误，请稍后重试。'
+      }
+      isStreaming.value = false
+      scrollToBottom()
     }
-
-    // 绑定新会话ID
-    if (!currentSessionId.value && newSid) {
-      currentSessionId.value = newSid
-    }
-
-    // 刷新会话列表
-    loadSessions(true)
-  } catch (e) {
-    console.error('SSE error:', e)
-    if (!messages.value[aiIdx].content) {
-      messages.value[aiIdx].content = '抱歉，发生了错误，请稍后重试。'
-    }
-  } finally {
-    isStreaming.value = false
-    scrollToBottom()
-  }
+  })
 }
 
 onMounted(() => { loadSessions() })

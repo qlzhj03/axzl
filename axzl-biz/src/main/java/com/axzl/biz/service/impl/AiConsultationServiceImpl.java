@@ -9,8 +9,10 @@ import com.axzl.biz.service.IBizKnowledgeMetaService;
 import com.axzl.biz.service.IChatMessageService;
 import com.axzl.biz.service.IChatSessionService;
 import com.axzl.biz.service.IUserProfileService;
+import com.axzl.biz.service.PromptTemplateLoader;
 import com.axzl.biz.service.SpringAIClientFactory;
 import com.axzl.common.utils.StringUtils;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -20,6 +22,8 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import reactor.core.publisher.Flux;
 
 import java.util.*;
@@ -56,6 +60,12 @@ public class AiConsultationServiceImpl implements IAiConsultationService {
     @Autowired
     private IUserProfileService profileService;
 
+    @Autowired
+    private TransactionTemplate transactionTemplate;
+
+    @Autowired
+    private PromptTemplateLoader promptTemplateLoader;
+
     /**
      * 智能问诊对话（完整RAG流程）
      *
@@ -64,9 +74,17 @@ public class AiConsultationServiceImpl implements IAiConsultationService {
      * @return AI回复
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String chat(Long userId,String sessionId, String userMessage, boolean useKnowledgeBase) {
 
         log.info("AI问诊 - 用户: {}, 会话: {}, 消息: {}, 知识库增强: {}", userId, sessionId, userMessage, useKnowledgeBase);
+
+        // 0. 安全检测 - 越狱/恶意提问拒答
+        if (promptTemplateLoader.containsUnsafeRequest(userMessage)) {
+            log.warn("检测到非医疗相关提问，返回拒答消息 - 用户: {}", userId);
+            return promptTemplateLoader.getRefusalMessage();
+        }
+
         // 1. 获取或创建会话
         ChatSession session;
         if (StringUtils.isEmpty(sessionId)) {
@@ -116,20 +134,18 @@ public class AiConsultationServiceImpl implements IAiConsultationService {
         // 5. 获取历史消息
         List<ChatMessage> recentMessages = messageService.selectRecentMessages(sessionId, 30);
 
-        // 6. 构建Prompt
-        String prompt = buildPrompt(userMessage, retrievalResults, recentMessages, profileContext, useKnowledgeBase);
+        // 6. 构建Prompt（含紧急预警检测）
+        boolean isEmergency = promptTemplateLoader.containsEmergencyKeywords(userMessage);
+        String prompt = buildPrompt(userMessage, retrievalResults, recentMessages, profileContext, useKnowledgeBase, isEmergency);
 
         // 7. 调用AI生成回复（使用默认对话模型）
-        String aiResponse;
-        try {
-            ChatClient currentChatClient = clientFactory.getDefaultChatClient();
-            aiResponse = currentChatClient.prompt()
-                    .user(prompt)
-                    .call().content();
-        } catch (Exception e) {
-            log.error("AI调用失败", e);
-            aiResponse = "抱歉，AI服务暂时不可用，请稍后重试。您可以先描述更多症状信息，我会在服务恢复后为您分析。";
-        }
+        ChatClient currentChatClient = clientFactory.getDefaultChatClient();
+        String aiResponse = currentChatClient.prompt()
+                .user(prompt)
+                .call().content();
+
+        // 7.1 追加医疗免责声明
+        aiResponse = aiResponse + PromptTemplateLoader.MEDICAL_DISCLAIMER;
 
         // 8. 保存AI回复
         ChatMessage assistantMsg = new ChatMessage();
@@ -167,36 +183,48 @@ public class AiConsultationServiceImpl implements IAiConsultationService {
     @Override
     public Flux<String> chatStream(Long userId,String sessionId, String userMessage, boolean useKnowledgeBase) {
         log.info("AI问诊(流式) - 用户: {}, 会话: {}, 消息: {}, 知识库增强: {}", userId, sessionId, userMessage, useKnowledgeBase);
-        // 1. 获取或创建会话
-        ChatSession session;
-        if (StringUtils.isEmpty(sessionId)) {
-            sessionId = UUID.randomUUID().toString();
-            session = new ChatSession();
-            session.setSessionId(sessionId);
-            session.setUserId(userId);
-            session.setTitle(userMessage.length() > 50 ? userMessage.substring(0, 50) + "..." : userMessage);
-            session.setMessageCount(0);
-            session.setTokensUsed(0);
-            session.setStatus("0");
-            session.setCreateTime(new Date());
-            session.setLastMessageTime(new Date());
-            sessionService.insertSession(session);
-        } else {
-            // 获取当前用户的此次会话
-            session = sessionService.selectSessionByUserIdAndSessionId(userId, sessionId);
-            if (session == null) {
-                throw new RuntimeException("会话不存在: " + sessionId);
-            }
+
+        // 0. 安全检测 - 越狱/恶意提问拒答
+        if (promptTemplateLoader.containsUnsafeRequest(userMessage)) {
+            log.warn("检测到非医疗相关提问，返回拒答消息 - 用户: {}", userId);
+            return Flux.just(promptTemplateLoader.getRefusalMessage());
         }
 
-        // 2. 保存用户消息
-        ChatMessage userMsg = new ChatMessage();
-        userMsg.setSessionId(sessionId);
-        userMsg.setUserId(userId);
-        userMsg.setRole("user");
-        userMsg.setContent(userMessage);
-        userMsg.setCreateTime(new Date());
-        messageService.insertMessage(userMsg);
+        // 1. 获取或创建会话（事务内）
+        final String[] sessionIdHolder = {sessionId};
+        final boolean[] isNewSession = {false};
+        ChatSession session = transactionTemplate.execute(status -> {
+            ChatSession sess;
+            if (StringUtils.isEmpty(sessionIdHolder[0])) {
+                sessionIdHolder[0] = UUID.randomUUID().toString();
+                sess = new ChatSession();
+                sess.setSessionId(sessionIdHolder[0]);
+                sess.setUserId(userId);
+                sess.setTitle(userMessage.length() > 50 ? userMessage.substring(0, 50) + "..." : userMessage);
+                sess.setMessageCount(0);
+                sess.setTokensUsed(0);
+                sess.setStatus("0");
+                sess.setCreateTime(new Date());
+                sess.setLastMessageTime(new Date());
+                sessionService.insertSession(sess);
+                isNewSession[0] = true;
+            } else {
+                sess = sessionService.selectSessionByUserIdAndSessionId(userId, sessionIdHolder[0]);
+                if (sess == null) {
+                    throw new RuntimeException("会话不存在: " + sessionIdHolder[0]);
+                }
+            }
+
+            // 2. 保存用户消息
+            ChatMessage userMsg = new ChatMessage();
+            userMsg.setSessionId(sessionIdHolder[0]);
+            userMsg.setUserId(userId);
+            userMsg.setRole("user");
+            userMsg.setContent(userMessage);
+            userMsg.setCreateTime(new Date());
+            messageService.insertMessage(userMsg);
+            return sess;
+        });
 
         // 3. 向量检索 - 从知识库中检索相关内容（根据开关决定是否启用）
         List<Document> retrievalResults = useKnowledgeBase ? performVectorSearch(userMessage) : Collections.emptyList();
@@ -214,10 +242,11 @@ public class AiConsultationServiceImpl implements IAiConsultationService {
         String profileContext = buildProfileContext(profile);
 
         // 5. 获取历史消息
-        List<ChatMessage> recentMessages = messageService.selectRecentMessages(sessionId, 30);
+        List<ChatMessage> recentMessages = messageService.selectRecentMessages(sessionIdHolder[0], 30);
 
-        // 6. 构建Prompt
-        String prompt = buildPrompt(userMessage, retrievalResults, recentMessages, profileContext, useKnowledgeBase);
+        // 6. 构建Prompt（含紧急预警检测）
+        boolean isEmergency = promptTemplateLoader.containsEmergencyKeywords(userMessage);
+        String prompt = buildPrompt(userMessage, retrievalResults, recentMessages, profileContext, useKnowledgeBase, isEmergency);
 
         // 7. 调用AI生成流式回复（使用默认对话模型）
         Flux<String> aiResponse;
@@ -229,12 +258,17 @@ public class AiConsultationServiceImpl implements IAiConsultationService {
                     .cache(); // 缓存流，使多个订阅者共享同一个AI调用
         } catch (Exception e) {
             log.error("AI调用失败", e);
+            // AI调用失败，清理已保存的会话和用户消息
+            if (isNewSession[0]) {
+                sessionService.deleteSessionByIds(new String[]{sessionIdHolder[0]});
+                messageService.remove(new LambdaQueryWrapper<ChatMessage>()
+                        .eq(ChatMessage::getSessionId, sessionIdHolder[0]));
+            }
             return Flux.just("抱歉，AI服务暂时不可用，请稍后重试。您可以先描述更多症状信息，我会在服务恢复后为您分析。");
         }
 
         // 8. 在流结束后异步保存完整的AI回复到数据库
-        //    使用独立的订阅来累积响应，确保即使前端断开也能保存
-        final String finalSessionId = sessionId;
+        final String finalSessionId = sessionIdHolder[0];
         final Long finalUserId = userId;
         final List<Map<String, Object>> finalRetrievalDetails = retrievalDetails;
         final ChatSession finalSession = session;
@@ -244,14 +278,27 @@ public class AiConsultationServiceImpl implements IAiConsultationService {
 
         // 使用 StringBuilder 累积完整响应
         final StringBuilder responseBuilder = new StringBuilder();
+        // 标记流是否发生错误
+        final boolean[] streamError = {false};
 
         // 先启动一个后台订阅来累积并保存响应
         // 这个订阅不受前端SSE连接影响
         aiResponse
                 .doOnNext(responseBuilder::append)
+                .doOnError(error -> streamError[0] = true)
                 .doFinally(signalType -> {
-                    // 无论流如何结束（正常完成/错误/取消），都保存已累积的响应
-                    String completeResponse = responseBuilder.toString();
+                    if (streamError[0]) {
+                        // 流发生错误，清理已保存的会话和用户消息
+                        log.warn("AI流处理出错，清理会话数据 - 会话: {}", finalSessionId);
+                        if (isNewSession[0]) {
+                            sessionService.deleteSessionByIds(new String[]{finalSessionId});
+                            messageService.remove(new LambdaQueryWrapper<ChatMessage>()
+                                    .eq(ChatMessage::getSessionId, finalSessionId));
+                        }
+                        return;
+                    }
+                    // 流正常结束，保存已累积的响应（含免责声明）
+                    String completeResponse = responseBuilder.toString() + PromptTemplateLoader.MEDICAL_DISCLAIMER;
                     if (!completeResponse.isEmpty()) {
                         saveAiResponseAsync(
                             finalSessionId,
@@ -283,8 +330,10 @@ public class AiConsultationServiceImpl implements IAiConsultationService {
                     }
                 );
 
-        // 返回同一个缓存的Flux给Controller用于SSE推送
-        return aiResponse;
+        // 在 Flux 头部注入 sessionId，尾部追加医疗免责声明
+        Flux<String> sessionIdFlux = Flux.just("{\"sessionId\":\"" + finalSessionId + "\"}");
+        Flux<String> disclaimerFlux = Flux.just(PromptTemplateLoader.MEDICAL_DISCLAIMER);
+        return Flux.concat(sessionIdFlux, aiResponse, disclaimerFlux);
     }
 
     /**
@@ -301,29 +350,30 @@ public class AiConsultationServiceImpl implements IAiConsultationService {
             List<Document> retrievalResults
     ) {
         try {
-            // 保存AI助手消息
-            ChatMessage assistantMsg = new ChatMessage();
-            assistantMsg.setSessionId(sessionId);
-            assistantMsg.setUserId(userId);
-            assistantMsg.setRole("assistant");
-            assistantMsg.setContent(completeResponse);
-            assistantMsg.setRetrievalResults(JSON.toJSONString(retrievalDetails));
-            assistantMsg.setCreateTime(new Date());
-            messageService.insertMessage(assistantMsg);
+            transactionTemplate.executeWithoutResult(status -> {
+                // 保存AI助手消息
+                ChatMessage assistantMsg = new ChatMessage();
+                assistantMsg.setSessionId(sessionId);
+                assistantMsg.setUserId(userId);
+                assistantMsg.setRole("assistant");
+                assistantMsg.setContent(completeResponse);
+                assistantMsg.setRetrievalResults(JSON.toJSONString(retrievalDetails));
+                assistantMsg.setCreateTime(new Date());
+                messageService.insertMessage(assistantMsg);
 
-            // 更新会话信息
-            session.setMessageCount(session.getMessageCount() != null ? session.getMessageCount() + 2 : 2);
-            session.setTokensUsed(session.getTokensUsed() != null ? session.getTokensUsed() + estimateTokens(prompt) + estimateTokens(completeResponse) : 200);
-            session.setLastMessageTime(new Date());
-            session.setUpdateTime(new Date());
+                // 更新会话信息
+                session.setMessageCount(session.getMessageCount() != null ? session.getMessageCount() + 2 : 2);
+                session.setTokensUsed(session.getTokensUsed() != null ? session.getTokensUsed() + estimateTokens(prompt) + estimateTokens(completeResponse) : 200);
+                session.setLastMessageTime(new Date());
+                session.setUpdateTime(new Date());
 
-            // 提取症状摘要和推荐科室
-            String symptomSummary = extractSymptomSummary(userMessage);
-            session.setSymptomSummary(symptomSummary);
-            session.setRecommendedLabel(extractRecommendedLabel(retrievalResults));
+                // 提取症状摘要和推荐科室
+                String symptomSummary = extractSymptomSummary(userMessage);
+                session.setSymptomSummary(symptomSummary);
+                session.setRecommendedLabel(extractRecommendedLabel(retrievalResults));
 
-            sessionService.updateSession(session);
-            
+                sessionService.updateSession(session);
+            });
             log.info("AI回复保存成功 - 会话: {}, 长度: {}", sessionId, completeResponse.length());
         } catch (Exception e) {
             log.error("保存AI回复失败 - 会话: {}", sessionId, e);
@@ -373,15 +423,24 @@ public class AiConsultationServiceImpl implements IAiConsultationService {
         if (profile.getMedicalHistory() != null && !profile.getMedicalHistory().isEmpty()) {
             sb.append("- 既往病史：").append(profile.getMedicalHistory()).append("\n");
         }
+        sb.append("如果用户未提到与之相关的问题，请忽略以上信息。");
         return sb.toString();
     }
 
     /**
-     * 构建RAG Prompt
+     * 构建RAG Prompt（含医疗安全约束）
+     *
+     * @param isEmergency 是否检测到紧急症状关键词
      */
     private String buildPrompt(String userMessage, List<Document> retrievalResults,
-                               List<ChatMessage> history, String profileContext, boolean useKnowledgeBase) {
+                               List<ChatMessage> history, String profileContext,
+                               boolean useKnowledgeBase, boolean isEmergency) {
         StringBuilder prompt = new StringBuilder();
+
+        // 紧急预警前缀
+        if (isEmergency) {
+            prompt.append(PromptTemplateLoader.EMERGENCY_PREFIX);
+        }
 
         if (useKnowledgeBase) {
             prompt.append("【参考知识】\n");
@@ -409,10 +468,12 @@ public class AiConsultationServiceImpl implements IAiConsultationService {
         prompt.append("\n【用户当前症状描述】\n");
         prompt.append(userMessage).append("\n");
 
+        prompt.append("\n").append(promptTemplateLoader.getResponseFormatRules());
+
         if (useKnowledgeBase) {
-            prompt.append("\n请根据以上参考知识、用户健康档案和历史对话，对用户进行专业的医疗问诊分析。");
+            prompt.append("\n请根据以上参考知识、用户健康档案和历史对话回答用户问题。");
         } else {
-            prompt.append("\n请根据你的医学知识、用户健康档案和历史对话，对用户进行专业的医疗问诊分析。");
+            prompt.append("\n请根据你的医学知识、用户健康档案和历史对话回答用户问题。");
         }
 
         return prompt.toString();

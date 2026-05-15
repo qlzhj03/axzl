@@ -1,5 +1,6 @@
 package com.axzl.biz.service.impl;
 
+import com.axzl.biz.service.PromptTemplateLoader;
 import com.axzl.biz.service.SpringAIClientFactory;
 import com.axzl.biz.domain.AIModelConfig;
 import com.axzl.biz.service.IAIModelConfigService;
@@ -26,9 +27,12 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SpringAIClientFactoryImpl implements SpringAIClientFactory {
     private static final Logger log = LoggerFactory.getLogger(SpringAIClientFactoryImpl.class);
     private final IAIModelConfigService modelConfigService;
-    
+
     @Autowired
     private ChatClient.Builder chatClientBuilder;
+
+    @Autowired
+    private PromptTemplateLoader promptTemplateLoader;
 
     /**
      * ChatClient缓存
@@ -187,9 +191,10 @@ public class SpringAIClientFactoryImpl implements SpringAIClientFactory {
 
         OpenAiChatOptions options = optionsBuilder.build();
 
-        // 使用注入的Builder创建ChatClient
+        // 使用注入的Builder创建ChatClient，注入医疗系统提示词
         return chatClientBuilder
             .defaultOptions(options)
+            .defaultSystem(promptTemplateLoader.getSystemPrompt())
             .build();
     }
 
