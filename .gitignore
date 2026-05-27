@@ -48,7 +48,6 @@ nbdist/
 !*/build/*.html
 !*/build/*.xml
 
-html
 logs
 data
 
