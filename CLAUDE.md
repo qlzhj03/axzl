@@ -2,88 +2,83 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Build Commands
+## Project Overview
 
-### Backend (Maven, Java 21, Spring Boot 4.0.3)
+AXZL (安心诊聊平台) is an AI-powered medical consultation system built with Spring Boot 4 + Vue 3. It uses RAG (Retrieval-Augmented Generation) with Milvus vector store and DeepSeek LLM to provide professional medical Q&A.
+
+## Build & Run Commands
+
+### Backend (Maven multi-module, Java 21)
 
 ```bash
-# Build all modules, skip tests
+# Full build
 mvn clean install -DskipTests
 
-# Build only axzl-admin and its dependencies
-mvn clean install -pl axzl-admin -am -DskipTests
-
-# Run the application (from axzl-admin directory)
+# Run backend (port 8080)
 cd axzl-admin && mvn spring-boot:run
+
+# Package for production
+mvn clean package -DskipTests
 ```
 
-### Frontend (Vue 3, Vite 6, from axzl-vue directory)
+### Frontend (Vue 3 + Vite, Node 18+)
 
 ```bash
-npm run dev           # Dev server on port 80, hot reload
-npm run build:prod    # Production build
-npm run build:stage   # Staging build
-npm run preview       # Preview built output
+cd axzl-vue
+npm install
+npm run dev          # Dev server on port 80, proxies /dev-api to localhost:8080
+npm run build:prod   # Production build → dist/
 ```
 
-## Module Architecture
+### Infrastructure
 
-```
-axzl-admin (web entry: controllers, startup, configs)
-  ├── axzl-framework (security, aspects, interceptors, core services)
-  │     ├── axzl-system (domain: user/role/menu/dict, mappers, services)
-  │     └── axzl-common (utils, annotations, base classes, enums, Redis)
-  └── axzl-biz (AI business: consultation, knowledge, profile)
-        └── axzl-common
+```bash
+docker-compose up -d   # Starts MySQL (3306), Redis (6379), Milvus (19530), MinIO (9000/9001), BGE Embedding (8718), Attu (8000)
+mysql -u root -p < sql/init.sql   # Initialize database
 ```
 
-- **axzl-admin**: `src/main/java/com/axzl/web/controller/` — controllers grouped in `system/`, `monitor/`, `biz/`, `common/`, `tool/`
-- **axzl-framework**: Spring Security config, JWT filter, TokenService, aspectj, datasource switching
-- **axzl-system**: MyBatis mappers + service impls for user/role/menu/dict
-- **axzl-common**: `BaseController`, `AjaxResult`, `BaseEntity`, `SecurityUtils`, `AxzlConfig`, annotations (`@Log`, `@Anonymous`, `@RateLimiter`, `@RepeatSubmit`)
-- **axzl-biz**: AI consultation service (Spring AI + RAG), chat session/message domain, document/knowledge import
+### AI Model Config
 
-## Controllers
+- DeepSeek API key via env var: `AI_DEEPSEEK_API_KEY`
+- Embedding service: BGE-large-zh-v1.5 at `http://localhost:8718`
+- Vector store: Milvus with COSINE metric, IVF_FLAT index, 1024 dimensions
 
-All controllers extend `BaseController` which provides:
-- `startPage()` — sets up PageHelper pagination
-- `getDataTable(list)` — wraps paginated results in `TableDataInfo`
-- `success()` / `error()` / `warn()` — returns `AjaxResult` (HashMap subclass)
-- `getUserId()` / `getUsername()` / `getLoginUser()` — current user helpers
+## Architecture
 
-Use `@PreAuthorize("@ss.hasPermi('system:user:list')")` for method-level permission control. `@Log(title, businessType)` triggers operation logging via AOP.
+### Backend Modules (Maven)
 
-## Security & JWT
+| Module | Package | Purpose |
+|--------|---------|---------|
+| `axzl-admin` | `com.axzl.web.controller` | Web entry point — controllers, application bootstrap. Controllers organized under `biz/`, `system/`, `monitor/`, `common/` |
+| `axzl-biz` | `com.axzl.biz` | Business logic — AI consultation, knowledge base (RAG), user profiles, medication reminders. Contains `SpringAIClientFactory` and `PromptTemplateLoader` |
+| `axzl-framework` | `com.axzl.framework` | Cross-cutting infrastructure — security config, AOP aspects, interceptors, data source config |
+| `axzl-system` | `com.axzl.system` | System management — user/role/menu/dictionary CRUD (MyBatis-Plus mappers) |
+| `axzl-common` | `com.axzl.common` | Shared utilities — `BaseController`, `AjaxResult` response wrapper, annotations, enums, constants |
 
-- **Stateless**: `SessionCreationPolicy.STATELESS`, no CSRF
-- **JWT signing**: HS512, secret from `token.secret` config (default: `abcdefghijklmnopqrstuvwxyz`)
-- **Token lifecycle**: `/login` → `TokenService.createToken()` → stored in Redis (`login_tokens:{uuid}`) → returned as `Bearer {token}`. Filter `JwtAuthenticationTokenFilter` extracts and validates on every request. Auto-refresh when < 20 min remaining.
-- **Password**: `BCryptPasswordEncoder`, max retry count (5) with lock time (10 min) tracked in Redis
-- **Anonymous endpoints**: `/login`, `/register`, `/captchaImage`, `/test/**`, static resources, `/swagger-ui/**`, `/druid/**`
-- **Admin user**: ID=1, role key `admin`, has `*:*:*` wildcard permission
+### Key Patterns
 
-## Frontend-Backend Communication
+- **Controllers** extend `BaseController` which provides `success()`/`error()` response helpers, pagination via `startPage()`, and `getLoginUser()` for current user context.
+- **Security**: JWT (HS512) + Spring Security + RBAC. Anonymous endpoints: `/login`, `/register`, `/captchaImage`. Use `@PreAuthorize` for role-based access.
+- **ORM**: MyBatis-Plus with mapper XML in `classpath*:mapper/**/*Mapper.xml`. Domain aliases scanned from `com.axzl.**.domain`.
+- **AI/Spring AI**: Uses Spring AI 2.0.0-M3 OpenAI-compatible client (pointing to DeepSeek). SSE streaming for real-time chat. Vector store uses Spring AI's Milvus integration.
 
-- **Dev**: Axios baseURL = `/dev-api`, Vite proxy rewrites to `http://localhost:8080` stripping the prefix
-- **Prod**: Axios baseURL = `/prod-api`
-- **Token**: Stored in cookie (`Admin-Token`), sent as `Authorization: Bearer {token}` header
-- **SSE streaming**: `ConsultationController.chatStream` uses `SseEmitter` + `Flux<String>`, frontend uses native `fetch` with `text/event-stream`
+### Frontend Structure
 
-## AI / RAG Flow (axzl-biz)
+- `src/views/biz/` — AI consultation, knowledge management, dashboard views
+- `src/views/system/` — User/role/menu management
+- `src/api/biz/` — Axios API calls for business modules
+- `src/store/` — Pinia state management
+- `src/router/` — Vue Router config
+- Path aliases: `@` → `./src`, `~` → project root
 
-`AiConsultationService` implements: user input → Embedding → Milvus vector search → user profile context → chat history → prompt assembly → DeepSeek API (via Spring AI) → save messages → return. Two modes: sync `chat()` and SSE streaming `chatStream()`.
+### API Proxy
 
-## Database
+Frontend dev server proxies `/dev-api/*` to `http://localhost:8080` (stripping the prefix). API docs available at `/swagger-ui.html` (Knife4j/Springdoc).
 
-- **ORM**: MyBatis-Plus 3.5.16 with MyBatis native coexistence
-- **Mapper scan**: `com.axzl.**.mapper`, XML at `classpath*:mapper/**/*Mapper.xml`
-- **Double datasource**: master/slave via Druid, switch with `@DataSource` annotation
-- **MyBatis-Plus plugins**: pagination, optimistic locker, block-attack interceptor
+## Conventions
 
-## Key Config (axzl-admin/src/main/resources/application.yml)
-
-- `server.port`: 8080, `context-path`: /
-- `axzl.profile`: file upload path (default `D:/axzl/uploadPath`)
-- `spring.ai.openai`: DeepSeek API (`https://api.deepseek.com`, model: `deepseek-v4-flash`)
-- `spring.ai.vectorstore.milvus`: Milvus on `localhost:19530`, COSINE metric, IVF_FLAT index
-- `token.expireTime`: 30 minutes
+- Backend follows Alibaba Java coding guidelines
+- Frontend uses Vue 3 Composition API with `<script setup>` + TypeScript
+- All API responses wrapped via `AjaxResult` (success/error/warn pattern)
+- Operation logging via `@Log` annotation
+- File uploads limited to 10MB single / 20MB total
